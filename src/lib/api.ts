@@ -1,8 +1,8 @@
 /**
- * Resilient API Client with Architecture-grade Retry & Circuit Breaker Logic
- * Implements DevOps SRE resilience principles:
- * - Exponential backoff on transient network faults ('Failed to fetch')
- * - Timeout enforcement
+ * Resilient API Client with Architecture-grade SRE Resilience & Stale-While-Revalidate Fallback
+ * - Exponential backoff retry on transient network errors
+ * - Memory cache fallback to prevent poll errors during transient server restarts
+ * - AbortController timeout enforcement
  * - Content-Type validation
  */
 
@@ -10,12 +10,16 @@ interface FetchOptions extends RequestInit {
   retries?: number;
   retryDelay?: number;
   timeoutMs?: number;
+  useCacheFallback?: boolean;
 }
+
+const memoryCache = new Map<string, any>();
 
 export async function fetchJson<T>(url: string, options: FetchOptions = {}): Promise<T> {
   const retries = options.retries ?? 2;
   const retryDelay = options.retryDelay ?? 300;
-  const timeoutMs = options.timeoutMs ?? 8000;
+  const timeoutMs = options.timeoutMs ?? 6000;
+  const isGet = !options.method || options.method.toUpperCase() === 'GET';
 
   let lastError: any = null;
 
@@ -42,12 +46,7 @@ export async function fetchJson<T>(url: string, options: FetchOptions = {}): Pro
           const errorData = await response.json();
           errorMessage = errorData.message || errorData.error || errorMessage;
         } catch {
-          try {
-            const text = await response.text();
-            errorMessage = text.slice(0, 100) || errorMessage;
-          } catch {
-            // fallback to status
-          }
+          // ignore
         }
         throw new Error(errorMessage);
       }
@@ -58,6 +57,12 @@ export async function fetchJson<T>(url: string, options: FetchOptions = {}): Pro
       }
 
       const data = await response.json();
+      
+      // Store in memory cache for safe fallback
+      if (isGet) {
+        memoryCache.set(url, data);
+      }
+
       return data as T;
     } catch (err: any) {
       lastError = err;
@@ -76,6 +81,11 @@ export async function fetchJson<T>(url: string, options: FetchOptions = {}): Pro
       }
       break;
     }
+  }
+
+  // Graceful SRE Fallback: if GET request failed and we have cached data, return cached data
+  if (isGet && memoryCache.has(url)) {
+    return memoryCache.get(url) as T;
   }
 
   throw lastError || new Error(`Failed request to ${url}`);

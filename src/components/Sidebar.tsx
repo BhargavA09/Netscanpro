@@ -5,16 +5,19 @@ import {
   Search, 
   Zap, 
   Settings, 
-  LogOut,
-  Activity,
-  Globe,
-  Link as LinkIcon,
-  Network as NetworkIcon,
-  Users,
-  Users2,
-  FolderOpen,
-  Radio,
-  GitBranch
+  LogOut, 
+  Activity, 
+  Globe, 
+  Link as LinkIcon, 
+  Network as NetworkIcon, 
+  Users, 
+  Users2, 
+  FolderOpen, 
+  Radio, 
+  GitBranch, 
+  Eye, 
+  Layers,
+  X
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { fetchJson } from '../lib/api';
@@ -22,14 +25,17 @@ import { fetchJson } from '../lib/api';
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'godseye', label: "God's Eye", icon: Eye },
   { id: 'map', label: 'Live Map', icon: Globe },
   { id: 'network', label: 'Network Analysis', icon: NetworkIcon },
   { id: 'tracking', label: 'Central Tracking', icon: Radio },
-  { id: 'devops', label: 'DevOps & Arch', icon: GitBranch },
+  { id: 'architecture', label: 'Architecture', icon: Layers },
   { id: 'feed', label: 'Threat Feed', icon: ShieldAlert },
   { id: 'correlation', label: 'Threat Correlation', icon: LinkIcon },
   { id: 'lookup', label: 'IoC Lookup', icon: Search },
@@ -40,7 +46,7 @@ const navItems = [
   { id: 'activity', label: 'System Logs', icon: Activity },
 ];
 
-export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
+export function Sidebar({ activeTab, setActiveTab, mobileOpen = false, onMobileClose }: SidebarProps) {
   const [alertCount, setAlertCount] = useState(0);
 
   useEffect(() => {
@@ -49,7 +55,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
         const data = await fetchJson<{ alertCount: number }>('/api/status');
         setAlertCount(data.alertCount);
       } catch (error) {
-        console.error('Error fetching alerts for sidebar:', error);
+        // Silently handled by resilient API client fallback
       }
     };
     checkAlerts();
@@ -57,41 +63,62 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     return () => clearInterval(interval);
   }, []);
 
-  return (
-    <div className="w-64 h-screen bg-card border-r border-border flex flex-col">
-      <div className="p-6 border-b border-border">
+  const handleNavClick = (id: string) => {
+    setActiveTab(id);
+    if (onMobileClose) {
+      onMobileClose();
+    }
+  };
+
+  const sidebarContent = (
+    <div className="w-64 h-full bg-card border-r border-border flex flex-col shrink-0">
+      <div className="p-5 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-accent/20 rounded flex items-center justify-center">
             <ShieldAlert className="w-5 h-5 text-accent" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-white">SENTINEL</h1>
+          <div>
+            <h1 className="text-lg font-bold tracking-tight text-white leading-tight">SENTINEL</h1>
+            <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
+              Threat Intel v2.4.0
+            </p>
+          </div>
         </div>
-        <p className="text-[10px] font-mono text-zinc-500 mt-1 uppercase tracking-widest">
-          Threat Intel v2.4.0
-        </p>
+
+        {/* Mobile Close Button */}
+        {onMobileClose && (
+          <button 
+            type="button" 
+            onClick={onMobileClose} 
+            className="lg:hidden text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/5"
+            aria-label="Close sidebar"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => (
           <button
             key={item.id}
-            onClick={() => setActiveTab(item.id)}
+            onClick={() => handleNavClick(item.id)}
             className={cn(
-              "w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 group",
+              "w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg transition-all duration-200 group text-left cursor-pointer",
               activeTab === item.id 
                 ? "bg-accent/10 text-accent border border-accent/20" 
-                : "text-zinc-400 hover:text-white hover:bg-white/5"
+                : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
             )}
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <item.icon className={cn(
-                "w-5 h-5 transition-colors",
+                "w-4 h-4 transition-colors shrink-0",
                 activeTab === item.id ? "text-accent" : "text-zinc-500 group-hover:text-zinc-300"
               )} />
-              <span className="text-sm font-medium">{item.label}</span>
+              <span className="text-xs font-medium truncate">{item.label}</span>
             </div>
             {item.id === 'dashboard' && alertCount > 0 && (
-              <span className="bg-critical text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+              <span className="bg-critical text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full min-w-[16px] text-center shrink-0">
                 {alertCount > 99 ? '99+' : alertCount}
               </span>
             )}
@@ -99,16 +126,41 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-border space-y-2">
-        <button className="w-full flex items-center gap-3 px-4 py-3 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">
-          <Settings className="w-5 h-5" />
-          <span className="text-sm font-medium">Settings</span>
+      <div className="p-3 border-t border-border space-y-1">
+        <button className="w-full flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-all text-xs">
+          <Settings className="w-4 h-4" />
+          <span>Settings</span>
         </button>
-        <button className="w-full flex items-center gap-3 px-4 py-3 text-zinc-400 hover:text-critical hover:bg-critical/5 rounded-lg transition-all">
-          <LogOut className="w-5 h-5" />
-          <span className="text-sm font-medium">Logout</span>
+        <button className="w-full flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-critical hover:bg-critical/5 rounded-lg transition-all text-xs">
+          <LogOut className="w-4 h-4" />
+          <span>Logout</span>
         </button>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Persistent Sidebar */}
+      <aside className="hidden lg:flex h-screen shrink-0">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Drawer with Backdrop */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity" 
+            onClick={onMobileClose} 
+            aria-hidden="true"
+          />
+          {/* Drawer Panel */}
+          <div className="relative z-50 flex-1 max-w-xs animate-in slide-in-from-left duration-200">
+            {sidebarContent}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

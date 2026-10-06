@@ -22,17 +22,17 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-export function DevOpsArchitecture() {
-  const [activeSection, setActiveSection] = useState<'architecture' | 'devops' | 'developer'>('architecture');
+export function SystemArchitecture() {
+  const [activeSection, setActiveSection] = useState<'architecture' | 'engineering' | 'developer'>('architecture');
 
   const developerInfo = {
     name: 'Bhargav',
     email: 'deck5566@gmail.com',
-    role: 'Lead Full-Stack Developer & DevOps Architect',
+    role: 'Lead Full-Stack Developer & Systems Architect',
     organization: 'Sentinel Cyber Intelligence Core',
     certifications: [
       'Certified Kubernetes Administrator (CKA)',
-      'AWS Certified DevOps Engineer Professional',
+      'AWS Certified Solutions Architect Professional',
       'Offensive Security Certified Professional (OSCP)'
     ],
     principles: [
@@ -49,7 +49,7 @@ export function DevOpsArchitecture() {
         description: 'Packet-by-packet packet inspection, DNS hop resolution tracking, and deterministic SIEM correlation.'
       },
       {
-        title: 'GitOps & SRE Resilience',
+        title: 'SRE Resilience & Self-Healing',
         description: 'Automated type linting, reproducible builds, circuit breakers, and exponential backoff retry policies.'
       }
     ]
@@ -95,7 +95,7 @@ export function DevOpsArchitecture() {
       layer: 'Presentation & UI Layer',
       tech: 'React 19 · Tailwind CSS · Recharts · Lucide Icons',
       responsibility: 'High-contrast SOC operator interface, zero-pill typography, reactive state hooks, and responsive real-time data widgets.',
-      components: 'Dashboard, LiveAttackMap, CentralNetworkTracking, IoCLookup, Collaboration, CmsHub'
+      components: 'Dashboard, LiveAttackMap, CentralNetworkTracking, GodsEyeTracking, IoCLookup, Collaboration, CmsHub'
     },
     {
       layer: 'Client-Side API & Resilience Adapter',
@@ -110,10 +110,10 @@ export function DevOpsArchitecture() {
       components: 'server.ts (REST APIs & WebSocket Room Server)'
     },
     {
-      layer: 'Deep Packet & DNS Inspection Engine',
-      tech: 'L3-L7 Protocol Dissector & Heuristic Analyzer',
-      responsibility: 'Hexadecimal byte offsets & ASCII rendering, DNS recursive hop resolution journey tracing, and Suricata/Snort-compatible threat scoring.',
-      components: 'traceDomainQuery(), computeRegionalThreatMetrics(), packetRecords store'
+      layer: 'Deep Packet & Spectral Inspection Engine',
+      tech: 'Fourier FFT & L3-L7 Dissector Heuristic Analyzer',
+      responsibility: 'Hexadecimal byte offsets & ASCII rendering, DNS recursive hop resolution journey tracing, and Fourier harmonic frequency attenuation.',
+      components: 'traceDomainQuery(), computeRegionalThreatMetrics(), FourierNetworkFilter'
     },
     {
       layer: 'Domain Entity & Contract Layer',
@@ -140,7 +140,7 @@ export function DevOpsArchitecture() {
               <div className="flex items-center gap-2">
                 <span className="text-xl font-bold text-white font-mono">{developerInfo.name}</span>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-accent/20 text-accent font-bold uppercase border border-accent/30">
-                  Lead Developer
+                  Lead Architect
                 </span>
               </div>
               <p className="text-xs text-zinc-400 mt-0.5">{developerInfo.role}</p>
@@ -163,7 +163,7 @@ export function DevOpsArchitecture() {
                 activeSection === 'developer' ? "bg-accent text-black font-semibold" : "bg-white/5 text-zinc-400 hover:text-white"
               )}
             >
-              Developer Profile
+              Architect Profile
             </button>
             <button
               onClick={() => setActiveSection('architecture')}
@@ -175,13 +175,13 @@ export function DevOpsArchitecture() {
               Architecture & Design
             </button>
             <button
-              onClick={() => setActiveSection('devops')}
+              onClick={() => setActiveSection('engineering')}
               className={cn(
                 "px-3 py-1.5 rounded-lg text-xs font-mono transition-colors",
-                activeSection === 'devops' ? "bg-accent text-black font-semibold" : "bg-white/5 text-zinc-400 hover:text-white"
+                activeSection === 'engineering' ? "bg-accent text-black font-semibold" : "bg-white/5 text-zinc-400 hover:text-white"
               )}
             >
-              DevOps & CI/CD
+              Engineering & CI/CD
             </button>
           </div>
         </div>
@@ -211,7 +211,7 @@ export function DevOpsArchitecture() {
                   Layered Hexagonal Software Architecture
                 </h3>
                 <p className="text-xs text-zinc-400 mt-1">
-                  Engineered by developer <strong className="text-white">{developerInfo.name}</strong> following strict Clean Code and high-throughput SIEM patterns.
+                  Engineered by developer <strong className="text-white">{developerInfo.name}</strong> following strict Clean Architecture and high-throughput SIEM patterns.
                 </p>
               </div>
               <span className="text-xs font-mono text-zinc-500 bg-white/5 px-2.5 py-1 rounded">
@@ -244,8 +244,8 @@ export function DevOpsArchitecture() {
         </div>
       )}
 
-      {/* SECTION: DEVOPS & CI/CD PIPELINE */}
-      {activeSection === 'devops' && (
+      {/* SECTION: ENGINEERING & PIPELINE */}
+      {activeSection === 'engineering' && (
         <div className="space-y-6">
           {/* Pipeline Visual Flow */}
           <div className="bg-card border border-border rounded-xl p-6">
@@ -253,7 +253,7 @@ export function DevOpsArchitecture() {
               <div>
                 <h3 className="text-white font-bold text-base flex items-center gap-2 font-mono">
                   <GitBranch className="w-5 h-5 text-accent" />
-                  DevOps Continuous Delivery Pipeline
+                  Automated Continuous Integration & Delivery Pipeline
                 </h3>
                 <p className="text-xs text-zinc-400 mt-1">
                   Lead Maintainer: <span className="text-accent font-mono">{developerInfo.name}</span>
@@ -317,11 +317,11 @@ export function DevOpsArchitecture() {
         </div>
       )}
 
-      {/* SECTION: DEVELOPER PROFILE */}
+      {/* SECTION: ARCHITECT PROFILE */}
       {activeSection === 'developer' && (
         <div className="bg-card border border-border rounded-xl p-6 space-y-6">
           <div className="border-b border-border pb-4">
-            <h3 className="text-lg font-bold text-white font-mono">Lead Developer Profile & Acknowledgements</h3>
+            <h3 className="text-lg font-bold text-white font-mono">Lead Architect Profile & Acknowledgements</h3>
             <p className="text-xs text-zinc-400 mt-1">
               Authored and maintained by <strong className="text-accent">{developerInfo.name}</strong> ({developerInfo.email}).
             </p>
@@ -343,11 +343,11 @@ export function DevOpsArchitecture() {
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                  <span>Global Regional Threat Density Recharts visualization & OSINT correlation.</span>
+                  <span>Fourier and Advanced Fourier spectral authentication & covert beacon filtering.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                  <span>Bidirectional WebSocket incident collaboration and Content Management System.</span>
+                  <span>Omnipresent God's Eye multi-sensor panoramic telemetry tracking.</span>
                 </li>
               </ul>
             </div>
@@ -358,7 +358,7 @@ export function DevOpsArchitecture() {
               </h4>
               <div className="bg-white/[0.02] border border-border rounded-lg p-4 space-y-2 font-mono text-xs">
                 <div className="flex justify-between py-1 border-b border-border/50">
-                  <span className="text-zinc-500">Developer Handle:</span>
+                  <span className="text-zinc-500">Architect:</span>
                   <span className="text-accent font-bold">{developerInfo.name}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-border/50">
@@ -370,8 +370,8 @@ export function DevOpsArchitecture() {
                   <span className="text-zinc-300">Hexagonal / Clean Architecture</span>
                 </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-zinc-500">DevOps Status:</span>
-                  <span className="text-emerald-400 font-bold">Production Ready</span>
+                  <span className="text-zinc-500">Production Status:</span>
+                  <span className="text-emerald-400 font-bold">Verified & Operational</span>
                 </div>
               </div>
             </div>

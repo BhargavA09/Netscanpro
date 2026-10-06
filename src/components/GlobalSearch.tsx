@@ -277,20 +277,20 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
               handleSelect(filteredItems[selectedIndex]);
             }
           }}
-          placeholder="Global Search (e.g. type:actor, type:ioc)..." 
-          className="bg-white/5 border border-border rounded-lg py-1.5 pl-10 pr-16 text-xs text-white focus:outline-none focus:border-accent/60 w-72 lg:w-96 transition-all font-mono"
+          placeholder="Search (e.g. type:actor)..." 
+          className="bg-white/5 border border-border rounded-lg py-1.5 pl-8 sm:pl-9 pr-6 sm:pr-12 text-xs text-white focus:outline-none focus:border-accent/60 w-32 sm:w-64 md:w-80 lg:w-96 transition-all font-mono"
         />
         
         {query ? (
           <button 
             type="button" 
             onClick={() => setQuery('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+            className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         ) : (
-          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-0.5 text-[9px] font-mono text-zinc-500 bg-white/5 px-1.5 py-0.5 rounded border border-border">
+          <div className="absolute right-2 sm:right-2.5 top-1/2 -translate-y-1/2 hidden md:flex items-center gap-0.5 text-[9px] font-mono text-zinc-500 bg-white/5 px-1.5 py-0.5 rounded border border-border">
             <span>⌘K</span>
           </div>
         )}
@@ -298,7 +298,7 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
 
       {/* Dropdown Results & Filter Palette */}
       {isOpen && (
-        <div className="absolute left-0 mt-2 w-80 sm:w-[480px] bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden font-mono">
+        <div className="fixed sm:absolute inset-x-4 sm:inset-x-auto sm:left-0 top-16 sm:top-auto sm:mt-2 max-w-full sm:w-[480px] bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden font-mono">
           {/* Category Filter Chips Ribbon */}
           <div className="p-2.5 bg-white/[0.02] border-b border-border flex items-center gap-1.5 overflow-x-auto text-[11px]">
             <span className="text-zinc-500 text-[10px] uppercase mr-1 flex items-center gap-1">

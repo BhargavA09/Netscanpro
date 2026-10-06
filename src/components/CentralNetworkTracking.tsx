@@ -21,14 +21,17 @@ import {
   Eye,
   RefreshCw,
   Terminal,
-  ExternalLink
+  ExternalLink,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { fetchJson } from '../lib/api';
 import { DnsRecord, PacketRecord, DnsTraceHop } from '../types';
+import { FourierNetworkFilter } from './FourierNetworkFilter';
+import { GodsEyeTracking } from './GodsEyeTracking';
 
 export function CentralNetworkTracking() {
-  const [activeTab, setActiveTab] = useState<'dns' | 'packets'>('dns');
+  const [activeTab, setActiveTab] = useState<'dns' | 'packets' | 'fourier' | 'godseye'>('dns');
   
   // DNS tracking state
   const [dnsRecords, setDnsRecords] = useState<DnsRecord[]>([]);
@@ -218,6 +221,30 @@ export function CentralNetworkTracking() {
           >
             <Terminal className="w-4 h-4" />
             Deep Packet Inspector (DPI)
+          </button>
+          <button
+            onClick={() => setActiveTab('fourier')}
+            className={cn(
+              "px-4 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-2",
+              activeTab === 'fourier'
+                ? "bg-accent/20 text-accent border border-accent/30 font-semibold"
+                : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
+            )}
+          >
+            <Sparkles className="w-4 h-4 text-accent" />
+            Fourier & Spectral Filter
+          </button>
+          <button
+            onClick={() => setActiveTab('godseye')}
+            className={cn(
+              "px-4 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-2",
+              activeTab === 'godseye'
+                ? "bg-accent/20 text-accent border border-accent/30 font-semibold"
+                : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
+            )}
+          >
+            <Eye className="w-4 h-4 text-accent" />
+            God's Eye HUD
           </button>
         </div>
 
@@ -811,6 +838,16 @@ export function CentralNetworkTracking() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ======================= TAB 3: FOURIER & SPECTRAL FILTER ======================= */}
+      {activeTab === 'fourier' && (
+        <FourierNetworkFilter />
+      )}
+
+      {/* ======================= TAB 4: GOD'S EYE MULTI-SENSOR HUD ======================= */}
+      {activeTab === 'godseye' && (
+        <GodsEyeTracking />
       )}
     </div>
   );
