@@ -1,0 +1,6 @@
+{
+  "name": "Sentinel Threat Intelligence",
+  "description": "A comprehensive platform for monitoring, analyzing, and responding to cybersecurity threats with AI-powered insights.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

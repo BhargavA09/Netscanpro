@@ -1,0 +1,36 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@theme {
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --color-bg: #0a0a0a;
+  --color-card: #141414;
+  --color-border: #262626;
+  --color-accent: #00ff41; /* Matrix green */
+  --color-critical: #ef4444;
+  --color-high: #f97316;
+  --color-medium: #eab308;
+  --color-low: #22c55e;
+}
+
+@layer base {
+  body {
+    @apply bg-bg text-zinc-300 font-sans antialiased;
+  }
+}
+
+.data-grid {
+  background-image: linear-gradient(to right, #1a1a1a 1px, transparent 1px),
+    linear-gradient(to bottom, #1a1a1a 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.animate-scanline {
+  animation: scanline 8s linear infinite;
+}
+
