@@ -97,3 +97,90 @@ export interface CmsItem {
   mimeType?: string;
 }
 
+export interface RegionalThreatMetric {
+  region: string;
+  regionCode: string;
+  activeAttacks: number;
+  threatDensity: number; // percentage
+  anomalyScore: number;  // 0 - 100
+  avgLatency: number;    // ms
+  vectorBreakdown: {
+    ddos: number;
+    malware: number;
+    botnet: number;
+    exploit: number;
+    phishing: number;
+  };
+  topOriginCountry: string;
+  topTargetSector: string;
+  correlatedAttackCount: number;
+  activeThreatIds: string[];
+}
+
+export interface DnsTraceHop {
+  hopNumber: number;
+  stage: string;
+  server: string;
+  serverIp: string;
+  latencyMs: number;
+  status: 'HIT' | 'FORWARD' | 'RESOLVED' | 'NXDOMAIN' | 'BLOCKED';
+  details: string;
+}
+
+export interface DnsRecord {
+  id: string;
+  timestamp: string;
+  query: string;
+  recordType: 'A' | 'AAAA' | 'CNAME' | 'TXT' | 'MX' | 'PTR' | 'SRV' | 'SOA';
+  clientIp: string;
+  clientPort: number;
+  browserContext: string;
+  resolver: string;
+  resolvedIps: string[];
+  ttl: number;
+  responseCode: 'NOERROR' | 'NXDOMAIN' | 'SERVFAIL' | 'REFUSED';
+  responseTimeMs: number;
+  dnssec: 'Secure' | 'Insecure' | 'Bogus';
+  threatLevel: 'Safe' | 'Suspicious' | 'Malicious';
+  threatReason?: string;
+  hops: DnsTraceHop[];
+}
+
+export interface PacketFlags {
+  syn: boolean;
+  ack: boolean;
+  fin: boolean;
+  rst: boolean;
+  psh: boolean;
+  urg: boolean;
+}
+
+export interface PacketRecord {
+  frameNumber: number;
+  timestamp: string;
+  interfaceName: string;
+  length: number;
+  sourceMac: string;
+  destMac: string;
+  sourceIp: string;
+  sourcePort: number;
+  destIp: string;
+  destPort: number;
+  protocol: 'DNS' | 'TCP' | 'UDP' | 'TLS/HTTPS' | 'HTTP' | 'ICMP';
+  flags?: PacketFlags;
+  seqNumber?: number;
+  ackNumber?: number;
+  windowSize?: number;
+  ttl: number;
+  summary: string;
+  payloadHex: string;
+  payloadAscii: string;
+  deepPacketInspection: {
+    verdict: 'Benign' | 'Suspicious' | 'Alert';
+    ruleTriggered?: string;
+    entropy: number;
+    applicationLayerProto?: string;
+    ciphersuite?: string;
+  };
+}
+

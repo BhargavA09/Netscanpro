@@ -12,6 +12,9 @@ import { ThreatAlertSystem } from './components/ThreatAlertSystem';
 import { ThreatActorProfiles } from './components/ThreatActorProfiles';
 import { Collaboration } from './components/Collaboration';
 import { CmsHub } from './components/CmsHub';
+import { CentralNetworkTracking } from './components/CentralNetworkTracking';
+import { DevOpsArchitecture } from './components/DevOpsArchitecture';
+import { GlobalSearch } from './components/GlobalSearch';
 import { fetchJson } from './lib/api';
 import { Bell, Search, User, Terminal, AlertTriangle, ShieldAlert, Globe, Link as LinkIcon, Zap, Network as NetworkIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -46,6 +49,8 @@ export default function App() {
         return <LiveAttackMap />;
       case 'network':
         return <NetworkAnalysis />;
+      case 'tracking':
+        return <CentralNetworkTracking />;
       case 'correlation':
         return <ThreatCorrelation />;
       case 'feed':
@@ -60,6 +65,8 @@ export default function App() {
         return <Collaboration />;
       case 'cms':
         return <CmsHub />;
+      case 'devops':
+        return <DevOpsArchitecture />;
       case 'activity':
         return <SystemLogs />;
       default:
@@ -102,12 +109,7 @@ export default function App() {
 
           <div className="flex items-center gap-6">
             <div className="relative hidden md:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-              <input 
-                type="text" 
-                placeholder="Global Search..." 
-                className="bg-white/5 border border-border rounded-lg py-1.5 pl-10 pr-4 text-xs text-white focus:outline-none focus:border-accent/50 w-64 transition-all"
-              />
+              <GlobalSearch onNavigate={(tab) => setActiveTab(tab)} />
             </div>
             <button className="relative p-2 text-zinc-400 hover:text-white transition-colors">
               <Bell className="w-5 h-5" />
@@ -116,15 +118,19 @@ export default function App() {
               )}
             </button>
             <div className="h-8 w-px bg-border" />
-            <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setActiveTab('devops')}
+              className="flex items-center gap-3 hover:opacity-85 transition-opacity text-left cursor-pointer"
+              title="View DevOps Architecture & Developer Profile"
+            >
               <div className="text-right hidden sm:block">
-                <p className="text-xs font-bold text-white">Admin User</p>
-                <p className="text-[10px] font-mono text-zinc-500 uppercase">L3 Analyst</p>
+                <p className="text-xs font-bold text-white font-mono">Bhargav</p>
+                <p className="text-[10px] font-mono text-accent uppercase">Lead DevOps & Architect</p>
               </div>
-              <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-accent/20 border border-accent flex items-center justify-center shadow-[0_0_10px_rgba(0,255,65,0.2)]">
                 <User className="w-5 h-5 text-accent" />
               </div>
-            </div>
+            </button>
           </div>
         </header>
 
@@ -164,6 +170,7 @@ export default function App() {
                 {activeTab === 'dashboard' && 'Real-time overview of your security posture and threat landscape.'}
                 {activeTab === 'map' && 'Live visualization of global cyber attacks and OSINT threat streams.'}
                 {activeTab === 'network' && 'Real-time telemetry of network bandwidth, protocol distribution, and topology.'}
+                {activeTab === 'tracking' && 'Central network tracking: real-time browser DNS resolution hop tracing, deep packet inspection (DPI), and packet-by-packet hex analysis.'}
                 {activeTab === 'correlation' && 'Advanced heuristic analysis linking disparate system logs to known threat indicators.'}
                 {activeTab === 'feed' && 'Chronological list of detected threats and security events.'}
                 {activeTab === 'analyzer' && 'Advanced AI-driven analysis of suspicious files and behavior.'}
@@ -171,6 +178,7 @@ export default function App() {
                 {activeTab === 'actors' && 'Intelligence on known adversary groups and their operations.'}
                 {activeTab === 'collab' && 'Collaborative SOC incident reports, investigative playbooks, and secure chat with real-time sync and presence indicators.'}
                 {activeTab === 'cms' && 'Content Management System (CMS) for uploading, categorizing, and managing publication states of bulletins and infosec papers.'}
+                {activeTab === 'devops' && 'DevOps continuous delivery pipeline, SRE reliability standards, and clean hexagonal software architecture engineered by lead developer Bhargav.'}
               </p>
             </div>
 

@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import http from "http";
 import { WebSocketServer } from "ws";
 
-import { IoC, Threat, CollabDocument, CollabUser, ChatMessage, CmsItem } from "./src/types";
+import { IoC, Threat, CollabDocument, CollabUser, ChatMessage, CmsItem, RegionalThreatMetric, DnsRecord, PacketRecord, DnsTraceHop } from "./src/types";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,9 +18,20 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Simple request logger
+  // CORS and Cache-Control middleware for API endpoints
   app.use((req, res, next) => {
-    if (req.url.startsWith('/api')) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept");
+
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(204);
+    }
+
+    if (req.url.startsWith("/api")) {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
       console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
     }
     next();
@@ -580,6 +591,478 @@ async function startServer() {
   app.get("/api/threat-actors", (req, res) => {
     res.json(threatActors);
   });
+
+  // --- REGIONAL THREAT DENSITY & CORRELATION LOGIC ---
+  const getRegionFromCoordinates = (lat: number, lng: number, country?: string): string => {
+    if (country) {
+      const c = country.toLowerCase();
+      if (c.includes('united states') || c.includes('canada') || c.includes('mexico') || c.includes('usa')) return 'North America';
+      if (c.includes('china') || c.includes('japan') || c.includes('korea') || c.includes('india') || c.includes('australia') || c.includes('singapore') || c.includes('taiwan')) return 'Asia-Pacific';
+      if (c.includes('germany') || c.includes('france') || c.includes('russia') || c.includes('united kingdom') || c.includes('netherlands') || c.includes('ukraine') || c.includes('italy')) return 'Europe';
+      if (c.includes('brazil') || c.includes('argentina') || c.includes('colombia') || c.includes('chile')) return 'Latin America';
+      if (c.includes('iran') || c.includes('saudi') || c.includes('israel') || c.includes('egypt') || c.includes('south africa') || c.includes('uae')) return 'Middle East & Africa';
+    }
+    if (lat >= 15 && lat <= 72 && lng >= -168 && lng <= -50) return 'North America';
+    if (lat >= 35 && lat <= 72 && lng >= -25 && lng <= 45) return 'Europe';
+    if (lat >= -12 && lat <= 65 && lng >= 60 && lng <= 180) return 'Asia-Pacific';
+    if (lat >= -60 && lat <= 15 && lng >= -120 && lng <= -35) return 'Latin America';
+    if (lat >= -35 && lat <= 40 && lng >= -20 && lng <= 60) return 'Middle East & Africa';
+    return 'Europe';
+  };
+
+  const computeRegionalThreatMetrics = (): RegionalThreatMetric[] => {
+    const regionDefinitions = [
+      { name: 'North America', code: 'NA', baseLatency: 28, topOrigin: 'US', defaultSector: 'Financial Services' },
+      { name: 'Europe', code: 'EU', baseLatency: 34, topOrigin: 'DE / RU', defaultSector: 'Energy & Critical Infra' },
+      { name: 'Asia-Pacific', code: 'APAC', baseLatency: 79, topOrigin: 'CN / KR', defaultSector: 'Semiconductors & Tech' },
+      { name: 'Latin America', code: 'LATAM', baseLatency: 105, topOrigin: 'BR', defaultSector: 'Government & Telecom' },
+      { name: 'Middle East & Africa', code: 'MEA', baseLatency: 92, topOrigin: 'IR / AE', defaultSector: 'Defense & Aerospace' }
+    ];
+
+    const counts: Record<string, { count: number; ids: string[]; vectors: { ddos: number; malware: number; botnet: number; exploit: number; phishing: number } }> = {};
+    regionDefinitions.forEach(r => {
+      counts[r.name] = { count: 0, ids: [], vectors: { ddos: 0, malware: 0, botnet: 0, exploit: 0, phishing: 0 } };
+    });
+
+    attackMapData.forEach(atk => {
+      const reg = getRegionFromCoordinates(atk.source.lat, atk.source.lng, atk.country);
+      if (!counts[reg]) {
+        counts[reg] = { count: 0, ids: [], vectors: { ddos: 0, malware: 0, botnet: 0, exploit: 0, phishing: 0 } };
+      }
+      counts[reg].count++;
+      counts[reg].ids.push(atk.id);
+      const t = (atk.type || '').toLowerCase();
+      if (t.includes('ddos') || t.includes('syn')) counts[reg].vectors.ddos++;
+      else if (t.includes('botnet') || t.includes('feodo') || t.includes('c2')) counts[reg].vectors.botnet++;
+      else if (t.includes('exploit') || t.includes('zero-day')) counts[reg].vectors.exploit++;
+      else if (t.includes('phishing') || t.includes('credential')) counts[reg].vectors.phishing++;
+      else counts[reg].vectors.malware++;
+    });
+
+    const totalRaw = Object.values(counts).reduce((acc, c) => acc + c.count, 0) || 1;
+
+    return regionDefinitions.map(r => {
+      const data = counts[r.name] || { count: 0, ids: [], vectors: { ddos: 0, malware: 0, botnet: 0, exploit: 0, phishing: 0 } };
+      const simulatedExtra = isUnderAttack ? Math.floor(Math.random() * 8) + 6 : Math.floor(Math.random() * 4) + 2;
+      const activeAttacks = data.count + simulatedExtra;
+      const threatDensity = Math.min(100, Math.round((activeAttacks / (totalRaw + simulatedExtra * 5)) * 100));
+      const anomalyScore = Math.min(99, Math.max(12, Math.round(
+        (activeAttacks * 5) + (isUnderAttack ? 35 : 12) + (data.vectors.exploit * 6) + (data.vectors.ddos * 4)
+      )));
+
+      return {
+        region: r.name,
+        regionCode: r.code,
+        activeAttacks,
+        threatDensity,
+        anomalyScore,
+        avgLatency: r.baseLatency + Math.floor(Math.random() * 10),
+        vectorBreakdown: {
+          ddos: data.vectors.ddos + 2,
+          malware: data.vectors.malware + 5,
+          botnet: data.vectors.botnet + 3,
+          exploit: data.vectors.exploit + 2,
+          phishing: data.vectors.phishing + 2
+        },
+        topOriginCountry: r.topOrigin,
+        topTargetSector: r.defaultSector,
+        correlatedAttackCount: data.ids.length,
+        activeThreatIds: data.ids
+      };
+    });
+  };
+
+  // --- CENTRAL NETWORK TRACKING & PACKET INSPECTOR STORE ---
+  let nextFrameNumber = 1045;
+  let dnsRecords: DnsRecord[] = [
+    {
+      id: "dns-1",
+      timestamp: new Date(Date.now() - 4000).toISOString(),
+      query: "api.threatfox.abuse.ch",
+      recordType: "A",
+      clientIp: "10.0.0.45",
+      clientPort: 52188,
+      browserContext: "Chrome 124 (Fetch Client / Sentinel UI)",
+      resolver: "1.1.1.1 (Cloudflare DoH)",
+      resolvedIps: ["185.220.101.44"],
+      ttl: 300,
+      responseCode: "NOERROR",
+      responseTimeMs: 24,
+      dnssec: "Secure",
+      threatLevel: "Safe",
+      hops: [
+        { hopNumber: 1, stage: "Browser Socket", server: "Localhost Web Engine", serverIp: "127.0.0.1", latencyMs: 1, status: "FORWARD", details: "Socket opened via DoH query pipeline" },
+        { hopNumber: 2, stage: "OS Stub Resolver", server: "systemd-resolved", serverIp: "127.0.0.53", latencyMs: 2, status: "FORWARD", details: "Local stub cache miss" },
+        { hopNumber: 3, stage: "Gateway Resolver", server: "Edge Security Gateway", serverIp: "10.0.0.1", latencyMs: 4, status: "FORWARD", details: "Inspected against local corporate DNS policy" },
+        { hopNumber: 4, stage: "Root Nameserver", server: "a.root-servers.net", serverIp: "198.41.0.4", latencyMs: 14, status: "FORWARD", details: "Delegated to .ch TLD registry" },
+        { hopNumber: 5, stage: "TLD Nameserver", server: "a.nic.ch", serverIp: "130.59.31.29", latencyMs: 19, status: "FORWARD", details: "Delegated to authoritative Cloudflare DNS" },
+        { hopNumber: 6, stage: "Authoritative NS", server: "ns1.cloudflare.com", serverIp: "173.245.58.51", latencyMs: 24, status: "RESOLVED", details: "Answer: 185.220.101.44 with valid RRSIG" }
+      ]
+    },
+    {
+      id: "dns-2",
+      timestamp: new Date(Date.now() - 8000).toISOString(),
+      query: "hr-portal-secure.com",
+      recordType: "A",
+      clientIp: "10.0.0.12",
+      clientPort: 48992,
+      browserContext: "Chrome 124 (Browser Navigation)",
+      resolver: "8.8.8.8 (Google Public DNS)",
+      resolvedIps: ["45.33.2.1"],
+      ttl: 60,
+      responseCode: "NOERROR",
+      responseTimeMs: 38,
+      dnssec: "Insecure",
+      threatLevel: "Malicious",
+      threatReason: "Identified in CIRCL MISP and IoC blocklist as active phishing / credential harvester infrastructure",
+      hops: [
+        { hopNumber: 1, stage: "Browser Socket", server: "User Agent", serverIp: "127.0.0.1", latencyMs: 1, status: "FORWARD", details: "New tab address bar request" },
+        { hopNumber: 2, stage: "OS Stub Resolver", server: "systemd-resolved", serverIp: "127.0.0.53", latencyMs: 2, status: "FORWARD", details: "Cache miss" },
+        { hopNumber: 3, stage: "Gateway Resolver", server: "Edge Security Gateway", serverIp: "10.0.0.1", latencyMs: 5, status: "FORWARD", details: "DNS firewall alarm triggered (Threat: IOC Match)" },
+        { hopNumber: 4, stage: "Root Nameserver", server: "k.root-servers.net", serverIp: "193.0.14.129", latencyMs: 18, status: "FORWARD", details: "Referral to .com TLD" },
+        { hopNumber: 5, stage: "TLD Nameserver", server: "a.gtld-servers.net", serverIp: "192.5.6.30", latencyMs: 27, status: "FORWARD", details: "Delegated to bulletproof authoritative host" },
+        { hopNumber: 6, stage: "Authoritative NS", server: "ns-fastflux.biz", serverIp: "45.33.2.1", latencyMs: 38, status: "BLOCKED", details: "Resolved IP: 45.33.2.1 sinkholed / quarantined" }
+      ]
+    },
+    {
+      id: "dns-3",
+      timestamp: new Date(Date.now() - 12000).toISOString(),
+      query: "v1-beacon.update-synctool.top",
+      recordType: "TXT",
+      clientIp: "192.168.1.105",
+      clientPort: 60124,
+      browserContext: "Edge (Background Sync / Service Worker)",
+      resolver: "1.1.1.1 (Cloudflare DoH)",
+      resolvedIps: [],
+      ttl: 15,
+      responseCode: "NOERROR",
+      responseTimeMs: 52,
+      dnssec: "Bogus",
+      threatLevel: "Malicious",
+      threatReason: "DNS Tunneling Detected: base64 payload in TXT record exceeds entropy threshold (5.24 bits/char)",
+      hops: [
+        { hopNumber: 1, stage: "Browser Socket", server: "Background Worker", serverIp: "127.0.0.1", latencyMs: 1, status: "FORWARD", details: "Asynchronous poll" },
+        { hopNumber: 2, stage: "OS Stub Resolver", server: "systemd-resolved", serverIp: "127.0.0.53", latencyMs: 3, status: "FORWARD", details: "Query: TXT record" },
+        { hopNumber: 3, stage: "Gateway Resolver", server: "Edge Security Gateway", serverIp: "10.0.0.1", latencyMs: 6, status: "FORWARD", details: "Inspection flag: TXT record with high entropy" },
+        { hopNumber: 4, stage: "Root Nameserver", server: "j.root-servers.net", serverIp: "192.58.128.30", latencyMs: 22, status: "FORWARD", details: "Referral to .top TLD" },
+        { hopNumber: 5, stage: "TLD Nameserver", server: "a.nic.top", serverIp: "156.154.100.3", latencyMs: 36, status: "FORWARD", details: "Authoritative delegation" },
+        { hopNumber: 6, stage: "Authoritative NS", server: "ns1.c2-stealth.top", serverIp: "185.190.140.22", latencyMs: 52, status: "BLOCKED", details: "TXT payload returned: 'token=eyJhbGciOi...'" }
+      ]
+    },
+    {
+      id: "dns-4",
+      timestamp: new Date(Date.now() - 16000).toISOString(),
+      query: "gateway.internal-corp.net",
+      recordType: "A",
+      clientIp: "10.0.0.45",
+      clientPort: 54312,
+      browserContext: "Firefox 125 (REST API Client)",
+      resolver: "10.0.0.1 (Internal Domain Controller)",
+      resolvedIps: ["10.0.0.1", "10.0.0.2"],
+      ttl: 3600,
+      responseCode: "NOERROR",
+      responseTimeMs: 3,
+      dnssec: "Secure",
+      threatLevel: "Safe",
+      hops: [
+        { hopNumber: 1, stage: "Browser Socket", server: "Firefox Engine", serverIp: "127.0.0.1", latencyMs: 1, status: "FORWARD", details: "Internal API call" },
+        { hopNumber: 2, stage: "OS Stub Resolver", server: "systemd-resolved", serverIp: "127.0.0.53", latencyMs: 1, status: "FORWARD", details: "Forwarding to internal DC" },
+        { hopNumber: 3, stage: "Gateway Resolver", server: "Active Directory DNS", serverIp: "10.0.0.1", latencyMs: 3, status: "HIT", details: "Authoritative internal zone record resolved" }
+      ]
+    }
+  ];
+
+  let packetRecords: PacketRecord[] = [
+    {
+      frameNumber: 1041,
+      timestamp: new Date(Date.now() - 3200).toISOString(),
+      interfaceName: "eth0 (WAN Gateway)",
+      length: 82,
+      sourceMac: "00:1a:2b:3c:4d:5e",
+      destMac: "00:50:56:c0:00:08",
+      sourceIp: "10.0.0.45",
+      sourcePort: 52188,
+      destIp: "1.1.1.1",
+      destPort: 53,
+      protocol: "DNS",
+      ttl: 64,
+      summary: "Standard query 0x7a12 A api.threatfox.abuse.ch",
+      payloadHex: "0000  00 50 56 c0 00 08 00 1a 2b 3c 4d 5e 08 00 45 00  .PV.....+<M^..E.\n0010  00 44 2f 14 40 00 40 11 b6 8c 0a 00 00 2d 01 01  .D/.@.@......-..\n0020  01 01 cb dc 00 35 00 30 18 a2 7a 12 01 00 00 01  .....5.0..z.....\n0030  00 00 00 00 00 00 03 61 70 69 09 74 68 72 65 61  .......api.threa\n0040  74 66 6f 78 05 61 62 75 73 65 02 63 68 00 00 01  tfox.abuse.ch...\n0050  00 01                                            ..",
+      payloadAscii: ".PV.....+<M^..E..D/.@.@......-.......5.0..z............api.threatfox.abuse.ch.....",
+      deepPacketInspection: {
+        verdict: "Benign",
+        entropy: 3.42,
+        applicationLayerProto: "DNS Query (UDP/53)"
+      }
+    },
+    {
+      frameNumber: 1042,
+      timestamp: new Date(Date.now() - 2500).toISOString(),
+      interfaceName: "eth0 (WAN Gateway)",
+      length: 60,
+      sourceMac: "00:11:22:33:44:55",
+      destMac: "00:50:56:c0:00:08",
+      sourceIp: "45.33.2.1",
+      sourcePort: 44912,
+      destIp: "10.0.0.12",
+      destPort: 80,
+      protocol: "TCP",
+      flags: { syn: true, ack: false, fin: false, rst: false, psh: false, urg: false },
+      seqNumber: 382910294,
+      ackNumber: 0,
+      windowSize: 1024,
+      ttl: 48,
+      summary: "TCP [SYN] Seq=382910294 Win=1024 Len=0",
+      payloadHex: "0000  00 50 56 c0 00 08 00 11 22 33 44 55 08 00 45 00  .PV.....\"3DU..E.\n0010  00 28 a1 40 40 00 30 06 c9 31 2d 21 02 01 0a 00  .(@..0..1-!.....\n0020  00 0c af 70 00 50 16 d2 ec 96 00 00 00 00 50 02  ...p.P........P.\n0030  04 00 bb 24 00 00                                ..$...          ",
+      payloadAscii: ".PV.....\"3DU..E..(@..0..1-!........p.P........P...$...",
+      deepPacketInspection: {
+        verdict: "Alert",
+        ruleTriggered: "SURICATA SCAN Port 80 rapid probe from known Malicious Feodo C2 IP",
+        entropy: 2.15,
+        applicationLayerProto: "TCP Handshake (SYN)"
+      }
+    },
+    {
+      frameNumber: 1043,
+      timestamp: new Date(Date.now() - 1800).toISOString(),
+      interfaceName: "eth0 (WAN Gateway)",
+      length: 1420,
+      sourceMac: "00:50:56:c0:00:08",
+      destMac: "00:1a:2b:3c:4d:5e",
+      sourceIp: "104.16.132.229",
+      sourcePort: 443,
+      destIp: "10.0.0.45",
+      destPort: 51990,
+      protocol: "TLS/HTTPS",
+      flags: { syn: false, ack: true, fin: false, rst: false, psh: true, urg: false },
+      seqNumber: 8192831,
+      ackNumber: 991823,
+      windowSize: 65535,
+      ttl: 57,
+      summary: "TLSv1.3 Application Data (Encrypted Transport)",
+      payloadHex: "0000  00 1a 2b 3c 4d 5e 00 50 56 c0 00 08 08 00 45 00  ..+<M^.PV.....E.\n0010  05 8c b2 91 40 00 39 06 cd 12 68 10 84 e5 0a 00  ....@.9...h.....\n0020  00 2d 01 bb cb 16 00 7d 06 ff 00 0f 23 a1 80 18  .-.....}....#...\n0030  ff ff 91 2b 00 00 01 01 08 0a 24 ab cd 12 12 34  ...+......$....4\n0040  17 03 03 05 35 a8 d9 21 b3 e4 10 99 ff 28 41 cc  ....5..!.....(A.",
+      payloadAscii: "..+<M^.PV.....E.....@.9...h......-.....}....#......+......$....4....5..!.....(A.",
+      deepPacketInspection: {
+        verdict: "Benign",
+        entropy: 7.94,
+        applicationLayerProto: "TLS 1.3 / AES-256-GCM",
+        ciphersuite: "TLS_AES_256_GCM_SHA384"
+      }
+    },
+    {
+      frameNumber: 1044,
+      timestamp: new Date(Date.now() - 900).toISOString(),
+      interfaceName: "eth0 (WAN Gateway)",
+      length: 168,
+      sourceMac: "00:1a:2b:3c:4d:5e",
+      destMac: "00:50:56:c0:00:08",
+      sourceIp: "192.168.1.105",
+      sourcePort: 60124,
+      destIp: "185.190.140.22",
+      destPort: 53,
+      protocol: "DNS",
+      ttl: 64,
+      summary: "Standard query TXT v1-beacon.update-synctool.top (Suspicious Exfil)",
+      payloadHex: "0000  00 50 56 c0 00 08 00 1a 2b 3c 4d 5e 08 00 45 00  .PV.....+<M^..E.\n0010  00 9a cd 44 40 00 40 11 31 1f c0 a8 01 69 b9 be  ...D@.@.1....i..\n0020  8c 16 ea ec 00 35 00 86 ab c1 99 2f 01 00 00 01  .....5...../....\n0030  00 00 00 00 00 00 09 76 31 2d 62 65 61 63 6f 6e  .......v1-beacon\n0040  0f 75 70 64 61 74 65 2d 73 79 6e 63 74 6f 6f 6c  .update-synctool\n0050  03 74 6f 70 00 00 10 00 01                      .top.....       ",
+      payloadAscii: ".PV.....+<M^..E...D@.@.1....i.......5...../...........v1-beacon.update-synctool.top.....",
+      deepPacketInspection: {
+        verdict: "Alert",
+        ruleTriggered: "ET MALWARE Potential DNS Tunneling / Covert Channel Data Exfiltration",
+        entropy: 5.34,
+        applicationLayerProto: "DNS TXT Query (UDP/53)"
+      }
+    }
+  ];
+
+  // Helper to trace any domain live
+  const traceDomainQuery = (domain: string, recordType: 'A' | 'AAAA' | 'CNAME' | 'TXT' | 'MX' = 'A', clientIp = '10.0.0.45'): DnsRecord => {
+    const isThreat = domain.includes('c2') || domain.includes('malware') || domain.includes('feodo') || 
+                     domain.includes('synctool') || domain.includes('beacon') || domain.includes('portal-secure') ||
+                     domain.includes('darknet') || domain.includes('top');
+    
+    const isInternal = domain.includes('local') || domain.includes('internal') || domain.includes('corp');
+    
+    const resolvedIps = isThreat 
+      ? ['45.33.2.1', '185.190.140.22'] 
+      : isInternal 
+        ? ['10.0.0.1'] 
+        : [`${Math.floor(Math.random() * 150) + 20}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`];
+
+    const hops: DnsTraceHop[] = [
+      {
+        hopNumber: 1,
+        stage: "Browser Socket",
+        server: "Browser Host Network Stack",
+        serverIp: "127.0.0.1",
+        latencyMs: 1,
+        status: "FORWARD",
+        details: `Browser client initiating DNS resolution request for domain ${domain} via getaddrinfo()`
+      },
+      {
+        hopNumber: 2,
+        stage: "OS Stub Resolver",
+        server: "Localhost Stub (systemd-resolved)",
+        serverIp: "127.0.0.53",
+        latencyMs: 2,
+        status: "FORWARD",
+        details: "Checked local OS nscd / DNS cache. No non-expired TTL found, forwarding to upstream."
+      },
+      {
+        hopNumber: 3,
+        stage: "Gateway Resolver",
+        server: "Security Gateway & DNS Firewall",
+        serverIp: isInternal ? "10.0.0.1" : "192.168.1.1",
+        latencyMs: 5,
+        status: isThreat ? "BLOCKED" : "FORWARD",
+        details: isThreat 
+          ? `IoC Detection Triggered: ${domain} matches blacklist database. Quarantine route engaged.` 
+          : "Corporate security inspection passed. Recursive forwarding initiated."
+      },
+      {
+        hopNumber: 4,
+        stage: "Root Nameserver",
+        server: "a.root-servers.net",
+        serverIp: "198.41.0.4",
+        latencyMs: 16,
+        status: "FORWARD",
+        details: `Queried Root zone for TLD delegation (.${domain.split('.').pop() || 'com'})`
+      },
+      {
+        hopNumber: 5,
+        stage: "TLD Nameserver",
+        server: `tld-ns.${domain.split('.').pop() || 'com'}.gtld`,
+        serverIp: "192.5.6.30",
+        latencyMs: 28,
+        status: "FORWARD",
+        details: `TLD Registry responded with Authoritative Nameserver referrals and glue records.`
+      },
+      {
+        hopNumber: 6,
+        stage: "Authoritative NS",
+        server: isThreat ? "ns-bulletproof.c2host.ru" : "ns1.cloudflare.com",
+        serverIp: isThreat ? "185.190.140.22" : "173.245.58.51",
+        latencyMs: isThreat ? 44 : 32,
+        status: isThreat ? "NXDOMAIN" : "RESOLVED",
+        details: isThreat 
+          ? `Returned suspicious fast-flux target. Heuristic rating: High Risk.` 
+          : `Authoritative answer returned with TTL 300s. RRSIG signed validly.`
+      }
+    ];
+
+    const newRecord: DnsRecord = {
+      id: `dns-trace-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      timestamp: new Date().toISOString(),
+      query: domain,
+      recordType,
+      clientIp,
+      clientPort: Math.floor(Math.random() * 20000) + 40000,
+      browserContext: "Sentinel Network Probe / Browser Engine",
+      resolver: isThreat ? "1.1.1.1 (Security Shielded)" : "8.8.8.8 (Google Public)",
+      resolvedIps,
+      ttl: isThreat ? 30 : 300,
+      responseCode: isThreat ? "NXDOMAIN" : "NOERROR",
+      responseTimeMs: hops.reduce((acc, h) => acc + h.latencyMs, 0),
+      dnssec: isThreat ? "Bogus" : "Secure",
+      threatLevel: isThreat ? "Malicious" : "Safe",
+      threatReason: isThreat ? `Correlated with adversary TTPs: High risk domain signature detected` : undefined,
+      hops
+    };
+
+    dnsRecords = [newRecord, ...dnsRecords.slice(0, 49)];
+    return newRecord;
+  };
+
+  // Periodic network packet and DNS activity generator
+  setInterval(() => {
+    nextFrameNumber++;
+    const protocols: ('DNS' | 'TCP' | 'UDP' | 'TLS/HTTPS' | 'HTTP')[] = ['TLS/HTTPS', 'DNS', 'TCP', 'UDP', 'HTTP'];
+    const selectedProto = protocols[Math.floor(Math.random() * protocols.length)];
+    const isAlert = isUnderAttack && Math.random() > 0.4;
+
+    const sampleDomains = [
+      'api.sentinel-intel.org', 'cdn.jsdelivr.net', 'github.com', 
+      'analytics.azure.com', 'internal-db.corp.net', 'metrics.prometheus.io',
+      'c2-beacon.dyn-update.top', 'exfil-vault.biz'
+    ];
+    const pickedDomain = sampleDomains[Math.floor(Math.random() * sampleDomains.length)];
+
+    const newPacket: PacketRecord = {
+      frameNumber: nextFrameNumber,
+      timestamp: new Date().toISOString(),
+      interfaceName: "eth0 (WAN Gateway)",
+      length: Math.floor(Math.random() * 1200) + 64,
+      sourceMac: "00:1a:2b:3c:4d:5e",
+      destMac: "00:50:56:c0:00:08",
+      sourceIp: isAlert ? '45.33.2.1' : `10.0.0.${Math.floor(Math.random() * 100) + 1}`,
+      sourcePort: Math.floor(Math.random() * 20000) + 40000,
+      destIp: isAlert ? '10.0.0.12' : `${Math.floor(Math.random() * 100) + 104}.${Math.floor(Math.random() * 200)}.${Math.floor(Math.random() * 200)}.1`,
+      destPort: selectedProto === 'DNS' ? 53 : selectedProto === 'TLS/HTTPS' ? 443 : selectedProto === 'HTTP' ? 80 : 8080,
+      protocol: selectedProto,
+      flags: selectedProto === 'TCP' ? {
+        syn: isAlert,
+        ack: !isAlert,
+        fin: false,
+        rst: false,
+        psh: !isAlert,
+        urg: false
+      } : undefined,
+      ttl: Math.floor(Math.random() * 32) + 48,
+      summary: selectedProto === 'DNS' 
+        ? `Standard query A ${pickedDomain}`
+        : selectedProto === 'TLS/HTTPS'
+          ? `TLSv1.3 Encrypted Handshake / Payload [Application Data]`
+          : selectedProto === 'TCP'
+            ? `TCP [${isAlert ? 'SYN' : 'ACK, PSH'}] Window=${Math.floor(Math.random() * 60000) + 1024}`
+            : `HTTP Payload Exchange to internal endpoint`,
+      payloadHex: `0000  00 50 56 c0 00 08 00 1a 2b 3c 4d 5e 08 00 45 00  .PV.....+<M^..E.\n0010  00 ${Math.floor(Math.random() * 50 + 10).toString(16)} 12 34 40 00 40 06 c0 a8 01 01 0a 00 00 01  ...4@.@.........\n0020  cb dc 01 bb 12 34 56 78 87 65 43 21 50 18 ff ff  .....4Vx.eC!P...\n0030  ${Array.from({ length: 16 }, () => Math.floor(Math.random() * 256).toString(16).padStart(2, '0')).join(' ')}  ..data-stream...`,
+      payloadAscii: `.PV.....+<M^..E....4@.@...........4Vx.eC!P.....data-stream...`,
+      deepPacketInspection: {
+        verdict: isAlert ? 'Alert' : (pickedDomain.includes('dyn') || pickedDomain.includes('biz') ? 'Suspicious' : 'Benign'),
+        ruleTriggered: isAlert ? 'HIGH_RISK_INTRUSION: Volumetric traffic anomalous signature detected' : undefined,
+        entropy: Number((Math.random() * 4 + (selectedProto === 'TLS/HTTPS' ? 4 : 2)).toFixed(2)),
+        applicationLayerProto: selectedProto
+      }
+    };
+
+    packetRecords = [newPacket, ...packetRecords.slice(0, 79)];
+
+    if (selectedProto === 'DNS' && Math.random() > 0.4) {
+      traceDomainQuery(pickedDomain, 'A');
+    }
+  }, 2500);
+
+  // --- REGIONAL THREAT DENSITY & CORRELATION API ---
+  app.get("/api/network/regional-density", (req, res) => {
+    const regions = computeRegionalThreatMetrics();
+    const totalAttacks = regions.reduce((acc, r) => acc + r.activeAttacks, 0);
+    const avgAnomaly = Math.round(regions.reduce((acc, r) => acc + r.anomalyScore, 0) / regions.length);
+    res.json({
+      timestamp: new Date().toISOString(),
+      totalAttacks,
+      avgAnomaly,
+      regions,
+      liveAttacksCount: attackMapData.length
+    });
+  });
+
+  // --- CENTRAL NETWORK TRACKING & DNS APIS ---
+  app.get("/api/network/dns-queries", (req, res) => {
+    res.json(dnsRecords);
+  });
+
+  app.post("/api/network/trace-dns", (req, res) => {
+    const { domain, recordType, clientIp } = req.body;
+    if (!domain) {
+      return res.status(400).json({ error: "Domain parameter is required" });
+    }
+    const trace = traceDomainQuery(domain, recordType || 'A', clientIp || '10.0.0.45');
+    res.json(trace);
+  });
+
+  app.get("/api/network/packets", (req, res) => {
+    res.json(packetRecords);
+  });
+
 
   // --- CMS STORE & API ENDPOINTS ---
   let cmsItems: CmsItem[] = [

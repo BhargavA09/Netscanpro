@@ -12,7 +12,9 @@ import {
   Network as NetworkIcon,
   Users,
   Users2,
-  FolderOpen
+  FolderOpen,
+  Radio,
+  GitBranch
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { fetchJson } from '../lib/api';
@@ -26,6 +28,8 @@ const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'map', label: 'Live Map', icon: Globe },
   { id: 'network', label: 'Network Analysis', icon: NetworkIcon },
+  { id: 'tracking', label: 'Central Tracking', icon: Radio },
+  { id: 'devops', label: 'DevOps & Arch', icon: GitBranch },
   { id: 'feed', label: 'Threat Feed', icon: ShieldAlert },
   { id: 'correlation', label: 'Threat Correlation', icon: LinkIcon },
   { id: 'lookup', label: 'IoC Lookup', icon: Search },
