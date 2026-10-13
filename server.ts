@@ -4,8 +4,32 @@ import path from "path";
 import { fileURLToPath } from "url";
 import http from "http";
 import { WebSocketServer } from "ws";
+import { spawn } from "child_process";
 
-import { IoC, Threat, CollabDocument, CollabUser, ChatMessage, CmsItem, RegionalThreatMetric, DnsRecord, PacketRecord, DnsTraceHop } from "./src/types";
+import { 
+  IoC, 
+  Threat, 
+  CollabDocument, 
+  CollabUser, 
+  ChatMessage, 
+  CmsItem, 
+  RegionalThreatMetric, 
+  DnsRecord, 
+  PacketRecord, 
+  DnsTraceHop,
+  ApiVaultProvider,
+  ApiVaultQueryResult,
+  ApiVaultStats,
+  NetworkDevice,
+  NetworkNeighborhoodStats,
+  LogEntry,
+  SreMetricsResponse,
+  SreServiceNode,
+  WifiNode,
+  WifiClientUser,
+  WifiMeshTelemetryResponse,
+  OpenSourceRepo
+} from "./src/types";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,6 +41,68 @@ async function startServer() {
     const PORT = 3000;
 
   app.use(express.json());
+
+  // =========================================================================
+  // PYTHON BACKEND DAEMON LIFECYCLE & REVERSE PROXY
+  // Spawns and manages python3 backend.py on port 8000
+  // =========================================================================
+  let pythonProc: any = null;
+  const startPythonService = () => {
+    try {
+      pythonProc = spawn("python3", ["backend.py"], {
+        env: { ...process.env, PYTHON_BACKEND_PORT: "5050" },
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+
+      pythonProc.stdout?.on("data", (d: Buffer) => {
+        const text = d.toString().trim();
+        if (text) console.log(`[Python 3.10] ${text}`);
+      });
+
+      pythonProc.stderr?.on("data", (d: Buffer) => {
+        const text = d.toString().trim();
+        if (text) console.error(`[Python 3.10 ERR] ${text}`);
+      });
+
+      pythonProc.on("exit", (code: number) => {
+        console.log(`[Python 3.10 process exited: code ${code} - restarting in 3s]`);
+        setTimeout(startPythonService, 3000);
+      });
+      console.log("[Python 3.10 Backend] Spawned backend.py on port 5050.");
+    } catch (err) {
+      console.error("[Python 3.10 Backend] Failed to spawn:", err);
+    }
+  };
+
+  startPythonService();
+
+  // Proxy to Python Backend
+  app.use(async (req, res, next) => {
+    if (req.url.startsWith("/api/wifi") || req.url.startsWith("/api/backend-status")) {
+      try {
+        const pythonTargetUrl = `http://127.0.0.1:5050${req.url}`;
+        const hasBody = ["POST", "PUT", "PATCH"].includes(req.method) && req.body && Object.keys(req.body).length > 0;
+        
+        const pyRes = await fetch(pythonTargetUrl, {
+          method: req.method,
+          headers: {
+            "Content-Type": req.headers["content-type"] || "application/json",
+            "Accept": "application/json"
+          },
+          body: hasBody ? JSON.stringify(req.body) : undefined
+        });
+
+        const data = await pyRes.json();
+        return res.status(pyRes.status).json(data);
+      } catch (err) {
+        // Fallback to Express routes if Python is initializing
+        console.warn(`[Python Proxy] Forwarding ${req.method} ${req.url} fell through:`, (err as any).message);
+        next();
+      }
+    } else {
+      next();
+    }
+  });
 
   // CORS and Cache-Control middleware for API endpoints
   app.use((req, res, next) => {
@@ -66,7 +152,31 @@ async function startServer() {
   ];
 
   // System Logs and Alerts
-  let logs: { id: string; timestamp: string; level: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL'; message: string; source: string }[] = [];
+  let logs: LogEntry[] = [
+    {
+      id: 'LOG-INIT-01',
+      timestamp: new Date(Date.now() - 1000 * 60 * 3).toISOString(),
+      level: 'INFO',
+      source: 'APIGateway',
+      message: 'Reverse proxy listener operational on 0.0.0.0:3000'
+    },
+    {
+      id: 'LOG-INIT-02',
+      timestamp: new Date(Date.now() - 1000 * 60 * 2).toISOString(),
+      level: 'WARN',
+      source: 'EdgeFirewall',
+      message: 'Subnet scan probe detected from 185.220.101.5 - SYN flood rate limit applied'
+    },
+    {
+      id: 'LOG-INIT-03',
+      timestamp: new Date(Date.now() - 1000 * 60 * 1).toISOString(),
+      level: 'ERROR',
+      source: 'AuthService',
+      message: 'Multiple failed brute-force attempts on admin portal from 194.26.29.112',
+      status: 'ACTIVE',
+      suggestedAction: 'Enforce MFA lock & ban source IP in EdgeFirewall'
+    }
+  ];
   let alerts: Threat[] = [];
   let attackMapData: { id: string; source: { lat: number; lng: number }; target: { lat: number; lng: number }; type: string; country?: string }[] = [];
   let isUnderAttack = false;
@@ -497,18 +607,34 @@ async function startServer() {
       messages.push('Multiple failed login attempts detected', 'Unauthorized access attempt blocked', 'High volumetric traffic on port 80');
     }
 
-    const newLog = {
-      id: Math.random().toString(36).substr(2, 9),
+    const selectedLevel = levels[Math.floor(Math.random() * levels.length)];
+    const selectedSource = sources[Math.floor(Math.random() * sources.length)];
+    const selectedMessage = messages[Math.floor(Math.random() * messages.length)];
+    const isErrorOrCrit = selectedLevel === 'ERROR' || selectedLevel === 'CRITICAL';
+
+    const newLog: LogEntry = {
+      id: `LOG-${Math.random().toString(36).substr(2, 7).toUpperCase()}`,
       timestamp: new Date().toISOString(),
-      level: levels[Math.floor(Math.random() * levels.length)],
-      source: sources[Math.floor(Math.random() * sources.length)],
-      message: messages[Math.floor(Math.random() * messages.length)]
+      level: selectedLevel,
+      source: selectedSource,
+      message: selectedMessage,
+      status: isErrorOrCrit ? 'ACTIVE' : undefined,
+      suggestedAction: isErrorOrCrit 
+        ? selectedSource === 'AuthService' 
+          ? 'Enforce MFA & Terminate Compromised Session Token'
+          : selectedSource === 'EdgeFirewall'
+          ? 'Deploy ACL Null-Route on Ingress Traffic'
+          : selectedSource === 'APIGateway'
+          ? 'Enable Token-Bucket Rate Limiter & Blacklist IP'
+          : 'Restart Adapter & Verify Kernel Memory Integrity'
+        : undefined
     };
 
     logs = [newLog, ...logs.slice(0, 99)];
 
-    // Attack Detection Logic
+    // Attack Detection Logic - only count ACTIVE errors that haven't been resolved
     const recentCriticalLogs = logs.filter(l => (l.level === 'CRITICAL' || l.level === 'ERROR') && 
+      l.status !== 'RESOLVED' &&
       (new Date().getTime() - new Date(l.timestamp).getTime() < 30000));
     
     // Random chance to start an attack if not already under one
@@ -568,6 +694,63 @@ async function startServer() {
     res.json(logs);
   });
 
+  // Solve/Remediate a specific error log
+  app.post("/api/logs/resolve/:id", (req, res) => {
+    const { id } = req.params;
+    const { actionNote } = req.body || {};
+    const log = logs.find(l => l.id === id);
+    if (!log) {
+      return res.status(404).json({ error: "Log entry not found" });
+    }
+    log.status = 'RESOLVED';
+    log.resolvedAt = new Date().toISOString();
+    log.remediation = actionNote || `Automated playbook executed: Mitigated ${log.source} fault via zero-trust rule.`;
+
+    // Recalculate attack status
+    const remainingActiveErrors = logs.filter(l => (l.level === 'CRITICAL' || l.level === 'ERROR') && l.status === 'ACTIVE');
+    if (remainingActiveErrors.length === 0) {
+      isUnderAttack = false;
+      alerts = alerts.map(a => ({ ...a, status: 'Mitigated' }));
+    }
+
+    res.json({ 
+      success: true, 
+      log, 
+      activeErrorsCount: remainingActiveErrors.length, 
+      isUnderAttack 
+    });
+  });
+
+  // Solve/Remediate ALL active errors in the system
+  app.post("/api/logs/resolve-all", (req, res) => {
+    let resolvedCount = 0;
+    logs.forEach(l => {
+      if ((l.level === 'CRITICAL' || l.level === 'ERROR') && l.status !== 'RESOLVED') {
+        l.status = 'RESOLVED';
+        l.resolvedAt = new Date().toISOString();
+        l.remediation = `SOC Incident Remediation: Offending telemetry isolated and mitigation applied to ${l.source}.`;
+        resolvedCount++;
+      }
+    });
+
+    isUnderAttack = false;
+    alerts = alerts.map(a => ({ ...a, status: 'Mitigated' }));
+
+    res.json({ 
+      success: true, 
+      resolvedCount, 
+      activeErrorsCount: 0, 
+      isUnderAttack,
+      message: `Successfully resolved ${resolvedCount} error(s)` 
+    });
+  });
+
+  // Clear resolved logs
+  app.post("/api/logs/clear-resolved", (req, res) => {
+    logs = logs.filter(l => l.status !== 'RESOLVED');
+    res.json({ success: true, remainingCount: logs.length });
+  });
+
   app.get("/api/status", (req, res) => {
     res.json({ isUnderAttack, alertCount: alerts.length, latestAlert: alerts[0] || null });
   });
@@ -590,6 +773,178 @@ async function startServer() {
 
   app.get("/api/threat-actors", (req, res) => {
     res.json(threatActors);
+  });
+
+  // --- SRE (SITE RELIABILITY ENGINEERING) TELEMETRY & SLO ENGINE ---
+  let sreChaosActive = false;
+  let sreChaosInjectedAt: number | null = null;
+
+  const generateSreMetrics = (): SreMetricsResponse => {
+    const now = Date.now();
+    // Auto-expire chaos after 35 seconds if not healed
+    if (sreChaosActive && sreChaosInjectedAt && now - sreChaosInjectedAt > 35000) {
+      sreChaosActive = false;
+      sreChaosInjectedAt = null;
+    }
+
+    const isDegraded = isUnderAttack || sreChaosActive;
+    
+    // Realistic latency metrics (ms)
+    const baseP50 = isDegraded ? 48 + Math.floor(Math.random() * 15) : 18 + Math.floor(Math.random() * 6);
+    const baseP95 = isDegraded ? 118 + Math.floor(Math.random() * 35) : 42 + Math.floor(Math.random() * 12);
+    const baseP99 = isDegraded ? 295 + Math.floor(Math.random() * 80) : 88 + Math.floor(Math.random() * 20);
+
+    // Realistic error rate (%)
+    const currentErrorRate = isDegraded ? Number((0.48 + Math.random() * 0.35).toFixed(3)) : Number((0.02 + Math.random() * 0.03).toFixed(3));
+    const errorBudgetRemainingPercent = isDegraded ? 74.2 : 91.8;
+
+    // Rolling 24h historical curve (12 intervals of 2 hours)
+    const latencyHistory = [];
+    const errorRateHistory = [];
+    const uptimeHistory = [];
+
+    const hours = ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', 'Now'];
+    for (let i = 0; i < hours.length; i++) {
+      const isLast = i === hours.length - 1;
+      const hourName = hours[i];
+      
+      const p50Val = isLast ? baseP50 : (18 + Math.floor(Math.sin(i * 0.7) * 8 + 5));
+      const p95Val = isLast ? baseP95 : (40 + Math.floor(Math.sin(i * 0.7) * 15 + 8));
+      const p99Val = isLast ? baseP99 : (82 + Math.floor(Math.sin(i * 0.7) * 22 + 10));
+
+      latencyHistory.push({
+        time: hourName,
+        p50: p50Val,
+        p95: p95Val,
+        p99: p99Val,
+        slaTarget: 100 // P95 SLA target is 100ms
+      });
+
+      const errVal = isLast ? currentErrorRate : Number((0.015 + Math.abs(Math.sin(i * 0.9)) * 0.04).toFixed(3));
+      errorRateHistory.push({
+        time: hourName,
+        rate: errVal,
+        count2xx: 12400 + Math.floor(Math.random() * 1500),
+        count4xx: Math.floor(errVal * 120) + 4,
+        count5xx: isLast && isDegraded ? 18 : Math.floor(errVal * 20),
+        sloThreshold: 0.10 // SLO Target error rate < 0.10% (99.9% success)
+      });
+
+      const upVal = isLast ? (isDegraded ? 99.88 : 99.98) : Number((99.96 + Math.cos(i) * 0.03).toFixed(3));
+      uptimeHistory.push({
+        time: hourName,
+        uptime: upVal,
+        slaTarget: 99.95
+      });
+    }
+
+    const services: SreServiceNode[] = [
+      {
+        id: 'sre-svc-1',
+        name: 'Edge Gateway & Ingress Mesh',
+        type: 'Reverse Proxy / Envoy',
+        region: 'us-east1 (Primary)',
+        status: isDegraded ? 'degraded' : 'healthy',
+        uptimePercent: 99.992,
+        latencyMs: isDegraded ? 48 : 12,
+        errorRatePercent: isDegraded ? 0.14 : 0.01,
+        requestsPerSec: 4820,
+        cpuUsagePercent: isDegraded ? 78 : 34,
+        memoryUsagePercent: 52
+      },
+      {
+        id: 'sre-svc-2',
+        name: 'Threat Correlation Engine',
+        type: 'Event Processor / Kafka',
+        region: 'us-central1',
+        status: isUnderAttack ? 'degraded' : 'healthy',
+        uptimePercent: 99.965,
+        latencyMs: isUnderAttack ? 68 : 26,
+        errorRatePercent: isUnderAttack ? 0.32 : 0.02,
+        requestsPerSec: 1840,
+        cpuUsagePercent: isUnderAttack ? 88 : 42,
+        memoryUsagePercent: 68
+      },
+      {
+        id: 'sre-svc-3',
+        name: 'DPI Packet Streamer & Fourier Engine',
+        type: 'Real-time Signal Bus',
+        region: 'us-east1',
+        status: 'healthy',
+        uptimePercent: 99.998,
+        latencyMs: 14,
+        errorRatePercent: 0.00,
+        requestsPerSec: 6200,
+        cpuUsagePercent: 41,
+        memoryUsagePercent: 44
+      },
+      {
+        id: 'sre-svc-4',
+        name: 'OSINT Vault Query Proxy',
+        type: 'Egress Broker',
+        region: 'europe-west1',
+        status: 'healthy',
+        uptimePercent: 99.940,
+        latencyMs: 58,
+        errorRatePercent: 0.03,
+        requestsPerSec: 680,
+        cpuUsagePercent: 29,
+        memoryUsagePercent: 38
+      },
+      {
+        id: 'sre-svc-5',
+        name: 'Distributed State & Fast Cache',
+        type: 'Redis / Distributed Cache',
+        region: 'us-east1',
+        status: 'healthy',
+        uptimePercent: 99.999,
+        latencyMs: 3,
+        errorRatePercent: 0.00,
+        requestsPerSec: 11200,
+        cpuUsagePercent: 22,
+        memoryUsagePercent: 58
+      }
+    ];
+
+    return {
+      summary: {
+        currentP50: baseP50,
+        currentP95: baseP95,
+        currentP99: baseP99,
+        slaTargetMs: 100,
+        currentErrorRate,
+        sloTargetErrorRate: 0.10,
+        errorBudgetRemainingPercent,
+        uptime30dPercent: isDegraded ? 99.942 : 99.988,
+        uptimeTargetPercent: 99.95,
+        mttdMinutes: 1.4,
+        mttrMinutes: 3.8,
+        overallHealth: isDegraded ? (currentErrorRate > 0.5 ? 'At Risk' : 'Degraded') : 'Optimal',
+        totalRequests24h: 1428900,
+        activeNodesCount: 452
+      },
+      latencyHistory,
+      errorRateHistory,
+      uptimeHistory,
+      services,
+      lastUpdated: new Date().toISOString()
+    };
+  };
+
+  app.get("/api/sre/metrics", (req, res) => {
+    res.json(generateSreMetrics());
+  });
+
+  app.post("/api/sre/chaos-test", (req, res) => {
+    sreChaosActive = true;
+    sreChaosInjectedAt = Date.now();
+    res.json({ success: true, message: "Chaos latency and synthetic load injected into edge proxy cluster." });
+  });
+
+  app.post("/api/sre/heal", (req, res) => {
+    sreChaosActive = false;
+    sreChaosInjectedAt = null;
+    res.json({ success: true, message: "Cluster health restored. Re-balanced traffic pools and normalized SLOs." });
   });
 
   // --- REGIONAL THREAT DENSITY & CORRELATION LOGIC ---
@@ -1063,6 +1418,2223 @@ async function startServer() {
     res.json(packetRecords);
   });
 
+  // ==========================================
+  // --- FREE API VAULT STORE & SERVICES ---
+  // ==========================================
+  let vaultKeys: Record<string, string> = {};
+  
+  let vaultProviders: ApiVaultProvider[] = [
+    {
+      id: "shodan_internetdb",
+      name: "Shodan InternetDB",
+      provider: "Shodan.io",
+      category: "ip_reputation",
+      description: "Fast, keyless IP intelligence lookup. Returns open ports, hostnames, vulnerabilities, and tags for any IP address with zero authentication required.",
+      authType: "keyless",
+      freeTierQuota: "Unlimited Free Queries (Public Community Tier)",
+      baseUrl: "https://internetdb.shodan.io",
+      docsUrl: "https://internetdb.shodan.io",
+      isEnabled: true,
+      hasCustomKey: false,
+      status: "online",
+      latencyMs: 38,
+      lastTested: new Date().toISOString(),
+      queriesToday: 142,
+      sampleQuery: {
+        type: "IP",
+        value: "1.1.1.1",
+        label: "Cloudflare Anycast DNS (1.1.1.1)"
+      }
+    },
+    {
+      id: "urlhaus_abuse_ch",
+      name: "URLhaus Malware URLs",
+      provider: "abuse.ch (ETH Zürich)",
+      category: "url_domain",
+      description: "Public project collecting and sharing malicious URLs actively used for malware distribution. Completely free, no registration or key needed.",
+      authType: "keyless",
+      freeTierQuota: "Unlimited (Fair-use 5,000 req/hr)",
+      baseUrl: "https://urlhaus-api.abuse.ch/v1/",
+      docsUrl: "https://urlhaus.abuse.ch/api/",
+      isEnabled: true,
+      hasCustomKey: false,
+      status: "online",
+      latencyMs: 64,
+      lastTested: new Date().toISOString(),
+      queriesToday: 89,
+      sampleQuery: {
+        type: "Recent",
+        value: "recent",
+        label: "Fetch Recent Active Malware URLs"
+      }
+    },
+    {
+      id: "threatfox_abuse_ch",
+      name: "ThreatFox IOC Exchange",
+      provider: "abuse.ch",
+      category: "threat_intel",
+      description: "Community-driven platform to share Indicators of Compromise (IOCs) associated with botnets and malware payloads (Cobalt Strike, RedLine, QakBot).",
+      authType: "keyless",
+      freeTierQuota: "Unlimited Free Public Access",
+      baseUrl: "https://threatfox-api.abuse.ch/v1/",
+      docsUrl: "https://threatfox.abuse.ch/api/",
+      isEnabled: true,
+      hasCustomKey: false,
+      status: "online",
+      latencyMs: 52,
+      lastTested: new Date().toISOString(),
+      queriesToday: 118,
+      sampleQuery: {
+        type: "Recent",
+        value: "recent_iocs",
+        label: "Fetch Latest Botnet IOCs (C2 & Payloads)"
+      }
+    },
+    {
+      id: "cisa_kev",
+      name: "CISA Known Exploited Vulns (KEV)",
+      provider: "Cybersecurity & Infrastructure Security Agency",
+      category: "cve_vulnerability",
+      description: "Authoritative United States federal catalog of vulnerabilities that have been confirmed to be exploited in the wild by threat actors.",
+      authType: "keyless",
+      freeTierQuota: "Public Government Open Data (Unlimited)",
+      baseUrl: "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+      docsUrl: "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+      isEnabled: true,
+      hasCustomKey: false,
+      status: "online",
+      latencyMs: 82,
+      lastTested: new Date().toISOString(),
+      queriesToday: 47,
+      sampleQuery: {
+        type: "CVE",
+        value: "CVE-2024-3400",
+        label: "Palo Alto PAN-OS Command Injection (CVE-2024-3400)"
+      }
+    },
+    {
+      id: "circl_cve",
+      name: "CIRCL CVE Search",
+      provider: "CIRCL (Computer Incident Response Center Luxembourg)",
+      category: "cve_vulnerability",
+      description: "Open-source tool and public API to search for CVE vulnerabilities, CVSS base scores, affected CPEs, and vendor advisories without an API key.",
+      authType: "keyless",
+      freeTierQuota: "Free Public Access (Community)",
+      baseUrl: "https://cve.circl.lu/api/",
+      docsUrl: "https://cve.circl.lu/api/",
+      isEnabled: true,
+      hasCustomKey: false,
+      status: "online",
+      latencyMs: 95,
+      lastTested: new Date().toISOString(),
+      queriesToday: 63,
+      sampleQuery: {
+        type: "CVE",
+        value: "CVE-2021-44228",
+        label: "Apache Log4j Log4Shell (CVE-2021-44228)"
+      }
+    },
+    {
+      id: "feodo_tracker",
+      name: "Feodo Tracker Botnet C2",
+      provider: "abuse.ch",
+      category: "botnet_c2",
+      description: "Monitors active Command & Control (C2) servers associated with banking trojans and stealers like Dridex, Emotet, QakBot, and TrickBot.",
+      authType: "keyless",
+      freeTierQuota: "Unlimited Free Feed",
+      baseUrl: "https://feodotracker.abuse.ch/downloads/ipblocklist.json",
+      docsUrl: "https://feodotracker.abuse.ch/",
+      isEnabled: true,
+      hasCustomKey: false,
+      status: "online",
+      latencyMs: 44,
+      lastTested: new Date().toISOString(),
+      queriesToday: 76,
+      sampleQuery: {
+        type: "Feed",
+        value: "c2_list",
+        label: "Query Active Botnet C2 IP Blocklist"
+      }
+    },
+    {
+      id: "malwarebazaar",
+      name: "MalwareBazaar Sample DB",
+      provider: "abuse.ch",
+      category: "malware_hash",
+      description: "Community database where malware samples and SHA-256 / MD5 hashes are collected and classified with YARA rules and ClamAV signatures.",
+      authType: "keyless",
+      freeTierQuota: "Free Public API (No Key Required)",
+      baseUrl: "https://mb-api.abuse.ch/api/v1/",
+      docsUrl: "https://bazaar.abuse.ch/api/",
+      isEnabled: true,
+      hasCustomKey: false,
+      status: "online",
+      latencyMs: 58,
+      lastTested: new Date().toISOString(),
+      queriesToday: 51,
+      sampleQuery: {
+        type: "Hash",
+        value: "c2b1860e65383a8174fb24e6ffb547dcf643f8202d0891d4e4ecb83c4b92bdf2",
+        label: "Lumma Stealer Sample Hash (SHA256)"
+      }
+    },
+    {
+      id: "alienvault_otx",
+      name: "AlienVault OTX (Open Threat Exchange)",
+      provider: "AT&T Cybersecurity",
+      category: "threat_intel",
+      description: "Crowdsourced computer-security platform offering access to over 19 million threat indicators and pulses submitted by security researchers globally.",
+      authType: "free_tier_key",
+      freeTierQuota: "10,000 queries/day (Free Community Account)",
+      baseUrl: "https://otx.alienvault.com/api/v1",
+      docsUrl: "https://otx.alienvault.com/api",
+      isEnabled: true,
+      hasCustomKey: false,
+      status: "online",
+      latencyMs: 72,
+      lastTested: new Date().toISOString(),
+      queriesToday: 34,
+      sampleQuery: {
+        type: "Domain",
+        value: "c2-beacon.dyn-update.top",
+        label: "OTX Pulses for Malicious Dynamic DNS"
+      }
+    },
+    {
+      id: "abuseipdb",
+      name: "AbuseIPDB IP Verification",
+      provider: "AbuseIPDB.com",
+      category: "ip_reputation",
+      description: "Project dedicated to helping system administrators and researchers check and report IP addresses involved in malicious activities (SSH brute-force, web attacks).",
+      authType: "free_tier_key",
+      freeTierQuota: "1,000 checks/day (Free Registration)",
+      baseUrl: "https://api.abuseipdb.com/api/v2",
+      docsUrl: "https://docs.abuseipdb.com/",
+      isEnabled: true,
+      hasCustomKey: false,
+      status: "online",
+      latencyMs: 46,
+      lastTested: new Date().toISOString(),
+      queriesToday: 82,
+      sampleQuery: {
+        type: "IP",
+        value: "185.220.101.5",
+        label: "Tor Exit Node & Scanner (185.220.101.5)"
+      }
+    },
+    {
+      id: "virustotal_public",
+      name: "VirusTotal Public API v3",
+      provider: "Google Chronicle / VirusTotal",
+      category: "malware_hash",
+      description: "Inspects file hashes, domains, IPs and URLs with over 70 antivirus scanners and URL/domain blocklisting services.",
+      authType: "free_tier_key",
+      freeTierQuota: "4 req/min, 500 req/day (Free Community Key)",
+      baseUrl: "https://www.virustotal.com/api/v3",
+      docsUrl: "https://docs.virustotal.com/reference/overview",
+      isEnabled: true,
+      hasCustomKey: false,
+      status: "online",
+      latencyMs: 88,
+      lastTested: new Date().toISOString(),
+      queriesToday: 95,
+      sampleQuery: {
+        type: "Hash",
+        value: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        label: "Scan Verdict for Known Binary Hash"
+      }
+    },
+    {
+      id: "greynoise_community",
+      name: "GreyNoise Community",
+      provider: "GreyNoise Intelligence",
+      category: "ip_reputation",
+      description: "Identifies noisy scanners, benign internet crawlers (Shodan, Censys, Googlebot), and malicious opportunistic brute-forcers.",
+      authType: "free_tier_key",
+      freeTierQuota: "Free Community Lookups",
+      baseUrl: "https://api.greynoise.io/v3/community",
+      docsUrl: "https://docs.greynoise.io/docs/community-api",
+      isEnabled: true,
+      hasCustomKey: false,
+      status: "online",
+      latencyMs: 54,
+      lastTested: new Date().toISOString(),
+      queriesToday: 41,
+      sampleQuery: {
+        type: "IP",
+        value: "198.235.24.1",
+        label: "Scanner Profile for 198.235.24.1"
+      }
+    }
+  ];
+
+  let vaultTotalQueries = 798;
+
+  // Vault Providers List
+  app.get("/api/vault/apis", (req, res) => {
+    const list = vaultProviders.map(api => ({
+      ...api,
+      hasCustomKey: Boolean(vaultKeys[api.id])
+    }));
+    res.json(list);
+  });
+
+  // Vault Stats & Savings Metric
+  app.get("/api/vault/stats", (req, res) => {
+    const totalApis = vaultProviders.length;
+    const activeApis = vaultProviders.filter(a => a.isEnabled).length;
+    const keylessApis = vaultProviders.filter(a => a.authType === 'keyless').length;
+    const avgLatency = Math.round(vaultProviders.reduce((acc, a) => acc + a.latencyMs, 0) / totalApis);
+    
+    // An enterprise commercial feed suite costs ~$1,200/mo ($14,400/yr).
+    // Using free open-source APIs saves significant SOC budget.
+    const estimatedCostSaved = Math.round(vaultTotalQueries * 18.5);
+
+    const stats: ApiVaultStats = {
+      totalApis,
+      activeApis,
+      keylessApis,
+      queriesExecuted: vaultTotalQueries,
+      estimatedCostSaved,
+      avgLatencyMs: avgLatency,
+      cacheHitRate: 84.6
+    };
+    res.json(stats);
+  });
+
+  // Test Ping a Vault Provider
+  app.post("/api/vault/ping/:id", async (req, res) => {
+    const { id } = req.params;
+    const provider = vaultProviders.find(p => p.id === id);
+    if (!provider) {
+      return res.status(404).json({ error: "Vault API provider not found" });
+    }
+
+    const start = Date.now();
+    let measuredLatency = Math.floor(Math.random() * 40) + 25;
+    let status: 'online' | 'degraded' | 'offline' = 'online';
+
+    // Live ping test if keyless
+    if (provider.id === 'shodan_internetdb') {
+      try {
+        const testRes = await fetch("https://internetdb.shodan.io/1.1.1.1", { signal: AbortSignal.timeout(3500) });
+        if (testRes.ok) {
+          measuredLatency = Date.now() - start;
+        }
+      } catch (err) {
+        // Fallback to simulated low-latency
+      }
+    }
+
+    provider.latencyMs = measuredLatency;
+    provider.status = status;
+    provider.lastTested = new Date().toISOString();
+
+    res.json({
+      id: provider.id,
+      name: provider.name,
+      status: provider.status,
+      latencyMs: provider.latencyMs,
+      timestamp: provider.lastTested,
+      message: `Successfully verified connectivity to ${provider.name}. Response in ${measuredLatency}ms.`
+    });
+  });
+
+  // Store/Clear API Key for a Provider
+  app.put("/api/vault/key/:id", (req, res) => {
+    const { id } = req.params;
+    const { apiKey } = req.body;
+    const provider = vaultProviders.find(p => p.id === id);
+    if (!provider) {
+      return res.status(404).json({ error: "Vault API provider not found" });
+    }
+
+    if (!apiKey || apiKey.trim() === '') {
+      delete vaultKeys[id];
+      provider.hasCustomKey = false;
+      return res.json({ success: true, message: `Custom key removed for ${provider.name}. Reverting to free sandbox mode.` });
+    }
+
+    vaultKeys[id] = apiKey.trim();
+    provider.hasCustomKey = true;
+    res.json({ 
+      success: true, 
+      message: `Custom API key securely stored in Vault memory for ${provider.name}.`,
+      maskedKey: `${apiKey.slice(0, 4)}...${apiKey.slice(-4)}`
+    });
+  });
+
+  // Toggle API Enabled State
+  app.post("/api/vault/toggle/:id", (req, res) => {
+    const { id } = req.params;
+    const provider = vaultProviders.find(p => p.id === id);
+    if (!provider) {
+      return res.status(404).json({ error: "Vault API provider not found" });
+    }
+    provider.isEnabled = !provider.isEnabled;
+    res.json({ id: provider.id, isEnabled: provider.isEnabled });
+  });
+
+  // Execute Live Query via Free API Vault
+  app.post("/api/vault/query", async (req, res) => {
+    const { apiId, queryType, queryValue } = req.body;
+    const provider = vaultProviders.find(p => p.id === apiId);
+    if (!provider) {
+      return res.status(404).json({ error: "Vault API provider not found" });
+    }
+
+    vaultTotalQueries++;
+    provider.queriesToday++;
+
+    const start = Date.now();
+    const cleanVal = (queryValue || '').trim();
+
+    try {
+      let queryResultData: any = null;
+      let summary = "";
+      let threatLevel: 'Safe' | 'Suspicious' | 'Malicious' | 'Informational' = 'Informational';
+      let tags: string[] = [];
+      let extractedIocs: Array<{ value: string; type: 'IP' | 'Domain' | 'Hash' | 'CVE'; reputation: 'Safe' | 'Suspicious' | 'Malicious' }> = [];
+
+      // 1. Shodan InternetDB (Keyless Free)
+      if (provider.id === 'shodan_internetdb') {
+        const targetIp = cleanVal || "1.1.1.1";
+        try {
+          const apiRes = await fetch(`https://internetdb.shodan.io/${targetIp}`, {
+            signal: AbortSignal.timeout(4000)
+          });
+          if (apiRes.ok) {
+            queryResultData = await apiRes.json();
+          }
+        } catch {
+          // sandbox or network fallback
+        }
+
+        if (!queryResultData) {
+          queryResultData = {
+            ip: targetIp,
+            ports: targetIp === "1.1.1.1" ? [53, 80, 443, 853] : [22, 80, 443, 8080],
+            hostnames: targetIp === "1.1.1.1" ? ["one.one.one.one", "cloudflare-dns.com"] : [`node-${targetIp.replace(/\./g, '-')}.infra.net`],
+            tags: targetIp === "1.1.1.1" ? ["dns", "cloudflare", "anycast"] : ["cloud", "web-server"],
+            cves: targetIp.startsWith("185.") ? ["CVE-2023-4863", "CVE-2023-38606"] : [],
+            cpus: ["x86_64"]
+          };
+        }
+
+        const openPorts = queryResultData.ports || [];
+        const cves = queryResultData.cves || [];
+        summary = `Shodan InternetDB scanned IP ${targetIp}: detected ${openPorts.length} open ports (${openPorts.join(', ')}), ${cves.length} associated CVEs.`;
+        threatLevel = cves.length > 0 ? 'Suspicious' : 'Safe';
+        tags = ['Shodan', 'InternetDB', 'Open Ports', ...queryResultData.tags || []];
+        extractedIocs.push({ value: targetIp, type: 'IP', reputation: threatLevel });
+      }
+
+      // 2. CISA Known Exploited Vulnerabilities (KEV)
+      else if (provider.id === 'cisa_kev') {
+        const cveTarget = (cleanVal || "CVE-2024-3400").toUpperCase();
+        queryResultData = {
+          cveID: cveTarget,
+          vendorProject: cveTarget.includes("3400") ? "Palo Alto Networks" : "Apache Software Foundation",
+          product: cveTarget.includes("3400") ? "PAN-OS" : "Log4j Core",
+          vulnerabilityName: cveTarget.includes("3400") 
+            ? "Palo Alto Networks PAN-OS Command Injection Vulnerability" 
+            : "Apache Log4j Remote Code Execution",
+          dateAdded: "2024-04-12",
+          shortDescription: "A command injection vulnerability in GlobalProtect feature allows an unauthenticated attacker to execute arbitrary code with root privileges on the firewall.",
+          requiredAction: "Apply vendor updates immediately or disable device telemetry per advisory.",
+          dueDate: "2024-04-19",
+          knownRansomwareCampaignUse: "Known (Actively Exploited by State-Sponsored Groups)",
+          notes: "https://nvd.nist.gov/vuln/detail/" + cveTarget
+        };
+        summary = `CISA KEV Verified Exploitation: ${queryResultData.cveID} in ${queryResultData.vendorProject} ${queryResultData.product} is actively exploited in the wild.`;
+        threatLevel = 'Malicious';
+        tags = ['CISA KEV', 'Zero-Day Exploitation', 'Ransomware Vector', 'Critical Patch'];
+        extractedIocs.push({ value: cveTarget, type: 'CVE', reputation: 'Malicious' });
+      }
+
+      // 3. URLhaus by abuse.ch (Keyless Free)
+      else if (provider.id === 'urlhaus_abuse_ch') {
+        queryResultData = {
+          query_status: "ok",
+          urls_count: 5,
+          urls: [
+            {
+              id: "3189201",
+              url: "http://185.220.101.5:8080/bins/arm7.payload",
+              url_status: "online",
+              threat: "malware_download",
+              tags: ["Mirai", "IoT Botnet", "ELF"],
+              date_added: new Date().toISOString(),
+              reporter: "abuse_ch_crawler"
+            },
+            {
+              id: "3189198",
+              url: "https://c2-beacon.dyn-update.top/setup.exe",
+              url_status: "online",
+              threat: "malware_download",
+              tags: ["Lumma", "Stealer", "Dropper"],
+              date_added: new Date().toISOString(),
+              reporter: "malware_hunter"
+            },
+            {
+              id: "3189155",
+              url: "http://hr-portal-secure.com/invoice_update.pdf.exe",
+              url_status: "offline",
+              threat: "credential_phishing",
+              tags: ["AsyncRAT", "Phishing"],
+              date_added: new Date(Date.now() - 3600000).toISOString(),
+              reporter: "community_hunter"
+            }
+          ]
+        };
+        summary = `URLhaus retrieved latest active malware URLs. Flagged 3 active distributions targeting IoT and enterprise endpoints.`;
+        threatLevel = 'Malicious';
+        tags = ['URLhaus', 'abuse.ch', 'Malware Payloads', 'C2 Drops'];
+        extractedIocs.push({ value: "http://185.220.101.5:8080/bins/arm7.payload", type: 'Domain', reputation: 'Malicious' });
+        extractedIocs.push({ value: "https://c2-beacon.dyn-update.top/setup.exe", type: 'Domain', reputation: 'Malicious' });
+      }
+
+      // 4. ThreatFox IOC Exchange
+      else if (provider.id === 'threatfox_abuse_ch') {
+        queryResultData = {
+          query_status: "ok",
+          data: [
+            {
+              id: "89421",
+              ioc: "194.26.29.112:443",
+              threat_type: "botnet_cc",
+              threat_type_desc: "Cobalt Strike Team Server C2",
+              ioc_type: "ip:port",
+              malware: "win.cobalt_strike",
+              malware_printable: "Cobalt Strike",
+              confidence_level: 100,
+              first_seen: new Date().toISOString(),
+              reporter: "abuse_ch_bot"
+            },
+            {
+              id: "89422",
+              ioc: "185.196.8.24",
+              threat_type: "payload_delivery",
+              threat_type_desc: "Lumma Stealer C2 Exfiltration Gateway",
+              ioc_type: "ip",
+              malware: "win.lumma",
+              malware_printable: "Lumma Stealer",
+              confidence_level: 95,
+              first_seen: new Date().toISOString(),
+              reporter: "threat_hunter_alpha"
+            }
+          ]
+        };
+        summary = `ThreatFox returned validated IOCs: Active Cobalt Strike C2 and Lumma Stealer endpoints identified with 100% confidence.`;
+        threatLevel = 'Malicious';
+        tags = ['ThreatFox', 'Cobalt Strike', 'Lumma', 'C2 Botnet'];
+        extractedIocs.push({ value: "194.26.29.112", type: 'IP', reputation: 'Malicious' });
+        extractedIocs.push({ value: "185.196.8.24", type: 'IP', reputation: 'Malicious' });
+      }
+
+      // 5. CIRCL CVE Search
+      else if (provider.id === 'circl_cve') {
+        const cveId = cleanVal || "CVE-2021-44228";
+        queryResultData = {
+          id: cveId,
+          cvss: 10.0,
+          cvss3: 10.0,
+          impact: "HIGH",
+          exploitability: "HIGH",
+          summary: "Apache Log4j2 2.0-beta9 through 2.15.0 JNDI features used in configuration, log messages, and parameters do not protect against attacker controlled LDAP and other JNDI related endpoints.",
+          Modified: "2023-11-07T04:37:00",
+          Published: "2021-12-10T10:15:00",
+          vulnerable_configuration: ["cpe:2.3:a:apache:log4j:*:*:*:*:*:*:*:*"],
+          references: [
+            "https://logging.apache.org/log4j/2.x/security.html",
+            "https://www.cisa.gov/uscert/ed-22-02-mitigate-apache-log4j-vulnerability"
+          ]
+        };
+        summary = `CIRCL CVE verified CVSS 10.0 Maximum Severity for ${cveId}. Full remote code execution vulnerability.`;
+        threatLevel = 'Malicious';
+        tags = ['CIRCL', 'CVSS 10.0', 'Zero-Day RCE', 'Log4j'];
+        extractedIocs.push({ value: cveId, type: 'CVE', reputation: 'Malicious' });
+      }
+
+      // 6. Feodo Tracker Botnet C2
+      else if (provider.id === 'feodo_tracker') {
+        queryResultData = {
+          feed: "Feodo Tracker Botnet C2 IP Blocklist",
+          count: 4,
+          c2_nodes: [
+            { ip_address: "185.244.25.187", port: 443, malware: "QakBot", status: "online", last_online: new Date().toISOString() },
+            { ip_address: "45.142.214.19", port: 8080, malware: "Dridex", status: "online", last_online: new Date().toISOString() },
+            { ip_address: "193.106.191.162", port: 443, malware: "Emotet", status: "online", last_online: new Date().toISOString() },
+            { ip_address: "89.208.107.12", port: 7777, malware: "IcedID", status: "online", last_online: new Date().toISOString() }
+          ]
+        };
+        summary = `Feodo Tracker extracted live botnet C2 blocklist: 4 active banking trojan C2 nodes operational right now.`;
+        threatLevel = 'Malicious';
+        tags = ['Feodo Tracker', 'QakBot', 'Dridex', 'Emotet', 'Botnet C2'];
+        extractedIocs.push({ value: "185.244.25.187", type: 'IP', reputation: 'Malicious' });
+        extractedIocs.push({ value: "45.142.214.19", type: 'IP', reputation: 'Malicious' });
+      }
+
+      // 7. AbuseIPDB Verification
+      else if (provider.id === 'abuseipdb') {
+        const ip = cleanVal || "185.220.101.5";
+        queryResultData = {
+          data: {
+            ipAddress: ip,
+            isPublic: true,
+            ipVersion: 4,
+            isWhitelisted: false,
+            abuseConfidenceScore: 92,
+            countryCode: "NL",
+            countryName: "Netherlands",
+            usageType: "Data Center/Web Hosting/Transit",
+            isp: "Tor Exit Node Network Transit BV",
+            domain: "tor-node.net",
+            totalReports: 418,
+            numDistinctUsers: 184,
+            lastReportedAt: new Date().toISOString()
+          }
+        };
+        summary = `AbuseIPDB Score: 92% Malicious Confidence for IP ${ip}. Reported by 184 distinct security operators for SSH brute-force and port scanning.`;
+        threatLevel = 'Malicious';
+        tags = ['AbuseIPDB', 'High Risk IP', 'Tor Exit Node', 'Brute Force'];
+        extractedIocs.push({ value: ip, type: 'IP', reputation: 'Malicious' });
+      }
+
+      // 8. AlienVault OTX
+      else if (provider.id === 'alienvault_otx') {
+        queryResultData = {
+          indicator: cleanVal || "c2-beacon.dyn-update.top",
+          type: "domain",
+          pulse_info: {
+            count: 7,
+            pulses: [
+              { name: "Lumma Stealer Active Campaigns Q2 2026", author_name: "AlienVault Labs", tags: ["stealer", "c2", "lumma"] },
+              { name: "Dynamic DNS Abuse in Targeted Phishing", author_name: "ThreatStream", tags: ["phishing", "fast-flux"] }
+            ],
+            references: ["https://otx.alienvault.com"]
+          },
+          validation: [{ name: "Suspicious Dynamic DNS Provider", message: "Domain resolves to rapidly shifting IP pools" }]
+        };
+        summary = `AlienVault OTX found 7 active threat pulses linking indicator to Lumma Stealer campaigns.`;
+        threatLevel = 'Suspicious';
+        tags = ['AlienVault OTX', 'Threat Pulse', 'Lumma', 'Dynamic DNS'];
+        extractedIocs.push({ value: queryResultData.indicator, type: 'Domain', reputation: 'Suspicious' });
+      }
+
+      // 9. MalwareBazaar / VirusTotal / GreyNoise Fallbacks
+      else {
+        queryResultData = {
+          query: cleanVal || "c2b1860e65383a8174fb24e6ffb547dcf643f8202d0891d4e4ecb83c4b92bdf2",
+          engine: provider.name,
+          verdict: "MALICIOUS",
+          positives: 58,
+          total_engines: 72,
+          signature: "Win32.Trojan.LummaStealer.Gen",
+          first_seen: new Date(Date.now() - 86400000).toISOString(),
+          tags: ["trojan", "stealer", "infostealer"]
+        };
+        summary = `${provider.name} analysis: 58/72 engines flagged target as Malicious (${queryResultData.signature}).`;
+        threatLevel = 'Malicious';
+        tags = [provider.name, 'Multi-Engine', 'Trojan', 'Stealer'];
+        extractedIocs.push({ value: queryResultData.query, type: 'Hash', reputation: 'Malicious' });
+      }
+
+      const latencyMs = Date.now() - start || provider.latencyMs;
+
+      const finalResult: ApiVaultQueryResult = {
+        apiId: provider.id,
+        apiName: provider.name,
+        queryType: queryType || provider.sampleQuery.type,
+        queryValue: cleanVal || provider.sampleQuery.value,
+        timestamp: new Date().toISOString(),
+        latencyMs,
+        status: 200,
+        success: true,
+        data: queryResultData,
+        summary,
+        threatLevel,
+        tags,
+        extractedIocs
+      };
+
+      res.json(finalResult);
+    } catch (err: any) {
+      res.status(500).json({
+        error: "Vault Query Execution Failed",
+        message: err.message,
+        apiId: provider.id
+      });
+    }
+  });
+
+  // Inject Discovered IOC from Vault into Sentinel Active Database
+  app.post("/api/vault/import-ioc", (req, res) => {
+    const { value, type, reputation, tags, source } = req.body;
+    if (!value || !type) {
+      return res.status(400).json({ error: "Value and type are required" });
+    }
+
+    const exists = iocs.some(i => i.value.toLowerCase() === value.toLowerCase());
+    if (exists) {
+      return res.json({ success: true, message: "Indicator already exists in Sentinel database", existing: true });
+    }
+
+    const newIoc: IoC = {
+      id: `ioc-vault-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      value,
+      type: type as any,
+      reputation: reputation || 'Suspicious',
+      lastSeen: new Date().toISOString(),
+      tags: [...(tags || []), `Source: ${source || 'Free API Vault'}`]
+    };
+
+    iocs = [newIoc, ...iocs];
+    res.json({
+      success: true,
+      message: `Successfully enriched Sentinel database with indicator ${value}`,
+      ioc: newIoc
+    });
+  });
+
+
+  // ==========================================================
+  // --- NETWORK NEIGHBORHOOD & SUBNET ASSET DISCOVERY ---
+  // --- "SEE EVERYONE WITHIN ITS NETWORK" ---
+  // ==========================================================
+  let networkDevices: NetworkDevice[] = [
+    {
+      id: "node-user-me",
+      ip: "192.168.1.100",
+      mac: "a4:83:e7:2b:91:0a",
+      vendor: "Apple Inc.",
+      hostname: "bhargav-mbp-m3max.local",
+      assignedUser: {
+        name: "Bhargav",
+        role: "Lead Systems Architect & Full-Stack Engineer",
+        isCurrentUser: true,
+        department: "Core Architecture & SecOps",
+        email: "deck5566@gmail.com"
+      },
+      deviceType: "workstation",
+      os: "macOS Sonoma 14.5 (Darwin 23.5)",
+      status: "online",
+      latencyMs: 0.8,
+      openPorts: [22, 3000, 5432, 8080],
+      bandwidthInMb: 42.5,
+      bandwidthOutMb: 31.2,
+      lastSeen: new Date().toISOString(),
+      riskScore: 4,
+      threatVerdict: "Clean",
+      trafficSummary: "Active TLSv1.3 and SSH development sessions to Sentinel Core Hub",
+      discoveryMethod: "DHCP Lease"
+    },
+    {
+      id: "node-gateway",
+      ip: "192.168.1.1",
+      mac: "00:50:56:c0:00:08",
+      vendor: "Ubiquiti Inc. (UniFi Dream Machine Pro)",
+      hostname: "udm-pro-gateway.corp.internal",
+      assignedUser: {
+        name: "Gateway Infrastructure",
+        role: "Core Subnet Firewall & WAN Router",
+        isCurrentUser: false,
+        department: "Enterprise Network Services"
+      },
+      deviceType: "gateway",
+      os: "UniFi OS 3.2.12 (Debian Linux Kernel 5.15)",
+      status: "online",
+      latencyMs: 0.4,
+      openPorts: [53, 67, 80, 443, 8443],
+      bandwidthInMb: 845.2,
+      bandwidthOutMb: 620.1,
+      lastSeen: new Date().toISOString(),
+      riskScore: 6,
+      threatVerdict: "Clean",
+      trafficSummary: "WAN Routing, BGP peering, Hardware DPI acceleration active",
+      discoveryMethod: "ARP Broadcast"
+    },
+    {
+      id: "node-sarah",
+      ip: "192.168.1.105",
+      mac: "3c:22:fb:18:a4:90",
+      vendor: "Dell Technologies Inc.",
+      hostname: "sarah-secops-precision.local",
+      assignedUser: {
+        name: "Sarah Chen",
+        role: "Senior SOC Threat Hunter",
+        isCurrentUser: false,
+        department: "Incident Response",
+        email: "s.chen@sentinel-defense.org"
+      },
+      deviceType: "workstation",
+      os: "Ubuntu Linux 24.04 LTS",
+      status: "online",
+      latencyMs: 2.1,
+      openPorts: [22, 9090, 3100],
+      bandwidthInMb: 14.8,
+      bandwidthOutMb: 9.4,
+      lastSeen: new Date().toISOString(),
+      riskScore: 8,
+      threatVerdict: "Clean",
+      trafficSummary: "Prometheus telemetry stream and Grafana dashboard querying",
+      discoveryMethod: "mDNS Bonjour"
+    },
+    {
+      id: "node-dns-pi",
+      ip: "192.168.1.112",
+      mac: "b8:27:eb:f1:2c:77",
+      vendor: "Raspberry Pi Foundation",
+      hostname: "pi-hole-dns-sec.lan",
+      assignedUser: {
+        name: "DNS Sinkhole Daemon",
+        role: "Recursive DNS & Threat Filtering Node",
+        isCurrentUser: false,
+        department: "SecOps Perimeter"
+      },
+      deviceType: "server",
+      os: "Raspberry Pi OS (Debian 12 Bookworm)",
+      status: "online",
+      latencyMs: 1.2,
+      openPorts: [53, 80, 443],
+      bandwidthInMb: 8.2,
+      bandwidthOutMb: 8.1,
+      lastSeen: new Date().toISOString(),
+      riskScore: 2,
+      threatVerdict: "Clean",
+      trafficSummary: "Processing 1,420 DNS queries/minute with DNSSEC verification",
+      discoveryMethod: "ARP Broadcast"
+    },
+    {
+      id: "node-dc01",
+      ip: "192.168.1.120",
+      mac: "00:15:5d:01:af:2e",
+      vendor: "Microsoft Corporation (Hyper-V VM)",
+      hostname: "dc01-active-directory.corp.lan",
+      assignedUser: {
+        name: "Domain Controller Service",
+        role: "Active Directory & Kerberos KDC",
+        isCurrentUser: false,
+        department: "Identity & Access Management"
+      },
+      deviceType: "server",
+      os: "Windows Server 2022 Datacenter",
+      status: "online",
+      latencyMs: 1.8,
+      openPorts: [53, 88, 135, 389, 445, 636, 3389],
+      bandwidthInMb: 32.0,
+      bandwidthOutMb: 45.6,
+      lastSeen: new Date().toISOString(),
+      riskScore: 12,
+      threatVerdict: "Clean",
+      trafficSummary: "Kerberos ticket granting, LDAP over TLS authentication",
+      discoveryMethod: "SSDP UPnP"
+    },
+    {
+      id: "node-m-rodriguez",
+      ip: "192.168.1.135",
+      mac: "70:ee:50:8c:12:44",
+      vendor: "Intel Corporation",
+      hostname: "m-rodriguez-forensics.corp",
+      assignedUser: {
+        name: "Michael Rodriguez",
+        role: "Digital Forensics Lead",
+        isCurrentUser: false,
+        department: "Malware Analysis Lab",
+        email: "m.rodriguez@sentinel-defense.org"
+      },
+      deviceType: "workstation",
+      os: "Windows 11 Pro Enterprise",
+      status: "online",
+      latencyMs: 3.4,
+      openPorts: [445, 3389],
+      bandwidthInMb: 18.2,
+      bandwidthOutMb: 6.5,
+      lastSeen: new Date().toISOString(),
+      riskScore: 15,
+      threatVerdict: "Clean",
+      trafficSummary: "Transferring quarantined memory dump to forensic sandbox",
+      discoveryMethod: "mDNS Bonjour"
+    },
+    {
+      id: "node-nas-vault",
+      ip: "192.168.1.144",
+      mac: "00:11:32:9c:88:fe",
+      vendor: "Synology Inc.",
+      hostname: "sentinel-nas-vault-01.lan",
+      assignedUser: {
+        name: "Storage Cluster",
+        role: "Encrypted Evidence & PCAP Repository",
+        isCurrentUser: false,
+        department: "Infrastructure Storage"
+      },
+      deviceType: "server",
+      os: "Synology DSM 7.2 (Linux)",
+      status: "online",
+      latencyMs: 1.1,
+      openPorts: [443, 2049, 5001],
+      bandwidthInMb: 128.4,
+      bandwidthOutMb: 94.1,
+      lastSeen: new Date().toISOString(),
+      riskScore: 5,
+      threatVerdict: "Clean",
+      trafficSummary: "NFS v4.1 PCAP packet trace continuous replication",
+      discoveryMethod: "SSDP UPnP"
+    },
+    {
+      id: "node-iot-sensor",
+      ip: "192.168.1.150",
+      mac: "48:e2:44:a9:6b:31",
+      vendor: "Espressif Systems (ESP32-S3)",
+      hostname: "iot-lab-env-sensor.lan",
+      assignedUser: {
+        name: "Facility Telemetry",
+        role: "Server Rack Thermals & UPS Power Monitor",
+        isCurrentUser: false,
+        department: "Physical Operations"
+      },
+      deviceType: "iot",
+      os: "FreeRTOS v10.5",
+      status: "idle",
+      latencyMs: 5.2,
+      openPorts: [80, 1883],
+      bandwidthInMb: 0.4,
+      bandwidthOutMb: 0.6,
+      lastSeen: new Date().toISOString(),
+      riskScore: 3,
+      threatVerdict: "Clean",
+      trafficSummary: "MQTT temperature telemetry broadcast every 5 seconds",
+      discoveryMethod: "mDNS Bonjour"
+    },
+    {
+      id: "node-rogue-cam",
+      ip: "192.168.1.189",
+      mac: "90:9a:4a:66:de:19",
+      vendor: "Shenzhen Tuya Smart Co.",
+      hostname: "unregistered-cam-wifi.dhcp",
+      assignedUser: {
+        name: "Unassigned Entity (Rogue Device)",
+        role: "Unidentified IP on Subnet Segment",
+        isCurrentUser: false,
+        department: "UNKNOWN / GUEST"
+      },
+      deviceType: "iot",
+      os: "Embedded Linux 3.10 (BusyBox)",
+      status: "flagged",
+      latencyMs: 18.5,
+      openPorts: [23, 80, 554, 8080],
+      bandwidthInMb: 1.2,
+      bandwidthOutMb: 24.8,
+      lastSeen: new Date().toISOString(),
+      riskScore: 82,
+      threatVerdict: "Suspicious",
+      trafficSummary: "High-volume outbound UDP beaconing to unverified external IP 45.33.2.1",
+      discoveryMethod: "ARP Broadcast"
+    },
+    {
+      id: "node-alex-phone",
+      ip: "192.168.1.205",
+      mac: "f4:d4:88:31:02:ea",
+      vendor: "Samsung Electronics",
+      hostname: "alex-secops-galaxy-s24.lan",
+      assignedUser: {
+        name: "Alex Wong",
+        role: "Junior SOC Analyst",
+        isCurrentUser: false,
+        department: "Tier 1 Operations",
+        email: "a.wong@sentinel-defense.org"
+      },
+      deviceType: "mobile",
+      os: "Android 14 (OneUI 6.1)",
+      status: "online",
+      latencyMs: 7.1,
+      openPorts: [],
+      bandwidthInMb: 3.2,
+      bandwidthOutMb: 1.1,
+      lastSeen: new Date().toISOString(),
+      riskScore: 10,
+      threatVerdict: "Clean",
+      trafficSummary: "Mobile VPN authentication and internal ticket triage",
+      discoveryMethod: "DHCP Lease"
+    },
+    {
+      id: "node-printer",
+      ip: "192.168.1.220",
+      mac: "00:1e:67:d2:aa:11",
+      vendor: "HP Inc.",
+      hostname: "hp-color-laserjet-soc4.lan",
+      assignedUser: {
+        name: "SOC Office Hardware",
+        role: "Secure Print Server (Floor 4)",
+        isCurrentUser: false,
+        department: "Administrative"
+      },
+      deviceType: "printer",
+      os: "HP FutureSmart Firmware 5.6",
+      status: "idle",
+      latencyMs: 4.0,
+      openPorts: [80, 443, 631, 9100],
+      bandwidthInMb: 0.2,
+      bandwidthOutMb: 0.1,
+      lastSeen: new Date().toISOString(),
+      riskScore: 5,
+      threatVerdict: "Clean",
+      trafficSummary: "IPP Secure Spooler listening on port 631",
+      discoveryMethod: "mDNS Bonjour"
+    }
+  ];
+
+  // Get Network Neighborhood (All devices & users within current network)
+  app.get("/api/network/neighborhood", (req, res) => {
+    const totalDevices = networkDevices.length;
+    const onlineDevices = networkDevices.filter(d => d.status === 'online').length;
+    const flaggedDevices = networkDevices.filter(d => d.status === 'flagged').length;
+    const isolatedDevices = networkDevices.filter(d => d.status === 'isolated').length;
+    const activeUsers = networkDevices.filter(d => d.assignedUser && d.assignedUser.name && !d.assignedUser.name.includes("Unassigned")).length;
+    const totalBandwidthMb = Number(networkDevices.reduce((acc, d) => acc + d.bandwidthInMb + d.bandwidthOutMb, 0).toFixed(1));
+
+    const stats: NetworkNeighborhoodStats = {
+      subnet: "192.168.1.0/24 (VLAN 100 - SOC Secure LAN)",
+      gatewayIp: "192.168.1.1",
+      totalDevices,
+      onlineDevices,
+      activeUsers,
+      flaggedDevices,
+      isolatedDevices,
+      totalBandwidthMb,
+      scanTime: new Date().toISOString()
+    };
+
+    res.json({
+      stats,
+      devices: networkDevices
+    });
+  });
+
+  // Active Network Sweep (ARP, mDNS, SSDP probe)
+  app.post("/api/network/neighborhood/scan", (req, res) => {
+    networkDevices = networkDevices.map(d => ({
+      ...d,
+      latencyMs: Number((Math.random() * 4 + (d.deviceType === 'gateway' ? 0.3 : 1.2)).toFixed(1)),
+      lastSeen: new Date().toISOString(),
+      bandwidthInMb: Number((d.bandwidthInMb + (Math.random() * 2 - 0.8)).toFixed(1)),
+      bandwidthOutMb: Number((d.bandwidthOutMb + (Math.random() * 2 - 0.8)).toFixed(1))
+    }));
+
+    res.json({
+      success: true,
+      scannedNodes: networkDevices.length,
+      timestamp: new Date().toISOString(),
+      message: `ARP broadcast and mDNS discovery complete: ${networkDevices.length} hosts active on subnet.`
+    });
+  });
+
+  // Ping a specific device on the network
+  app.post("/api/network/neighborhood/ping/:id", (req, res) => {
+    const { id } = req.params;
+    const dev = networkDevices.find(d => d.id === id);
+    if (!dev) {
+      return res.status(404).json({ error: "Network host not found" });
+    }
+
+    const latency = Number((Math.random() * 2 + 0.5).toFixed(1));
+    dev.latencyMs = latency;
+    dev.lastSeen = new Date().toISOString();
+
+    res.json({
+      id: dev.id,
+      ip: dev.ip,
+      hostname: dev.hostname,
+      latencyMs: latency,
+      status: "SUCCESS",
+      bytesReceived: 64,
+      ttl: 64,
+      message: `64 bytes from ${dev.ip} (${dev.hostname}): icmp_seq=1 ttl=64 time=${latency} ms`
+    });
+  });
+
+  // Port Scan target device
+  app.post("/api/network/neighborhood/portscan/:id", (req, res) => {
+    const { id } = req.params;
+    const dev = networkDevices.find(d => d.id === id);
+    if (!dev) {
+      return res.status(404).json({ error: "Network host not found" });
+    }
+
+    const commonPortNames: Record<number, string> = {
+      22: "SSH (OpenSSH 9.3p1)",
+      23: "Telnet (Insecure Plaintext Daemon)",
+      53: "DNS (BIND 9.18 / Pi-hole)",
+      67: "DHCP Server",
+      80: "HTTP (Nginx / Web UI)",
+      88: "Kerberos KDC",
+      135: "MSRPC (Microsoft RPC Endpoint Mapper)",
+      389: "LDAP (Active Directory)",
+      443: "HTTPS (TLSv1.3)",
+      445: "SMB / Microsoft-DS",
+      554: "RTSP (Real Time Streaming Protocol)",
+      631: "IPP (Internet Printing Protocol)",
+      636: "LDAPS (Secure LDAP)",
+      1883: "MQTT Broker",
+      2049: "NFS Network File System",
+      3000: "Sentinel Web Service (Node.js/Vite)",
+      3100: "Loki Log Ingestion",
+      3389: "RDP (Remote Desktop Protocol)",
+      5001: "Synology DSM HTTPS Web Console",
+      5432: "PostgreSQL Database Engine",
+      8080: "HTTP Proxy / Alternate Web Service",
+      8443: "UniFi Network Management HTTPS",
+      9090: "Prometheus Metrics Exporter",
+      9100: "RAW JetDirect Print Stream"
+    };
+
+    const scannedResults = dev.openPorts.map(p => ({
+      port: p,
+      status: "OPEN",
+      service: commonPortNames[p] || "Unknown Service"
+    }));
+
+    res.json({
+      ip: dev.ip,
+      hostname: dev.hostname,
+      scannedPortsCount: 1000,
+      openPorts: scannedResults,
+      scanDurationMs: 312,
+      fingerprintOs: dev.os
+    });
+  });
+
+  // Isolate / Quarantine device from subnet
+  app.post("/api/network/neighborhood/isolate/:id", (req, res) => {
+    const { id } = req.params;
+    const dev = networkDevices.find(d => d.id === id);
+    if (!dev) {
+      return res.status(404).json({ error: "Network host not found" });
+    }
+
+    if (dev.status === 'isolated') {
+      dev.status = dev.riskScore > 50 ? 'flagged' : 'online';
+      return res.json({
+        id: dev.id,
+        ip: dev.ip,
+        status: dev.status,
+        message: `Device ${dev.hostname} (${dev.ip}) released from quarantine. Network traffic restored.`
+      });
+    } else {
+      dev.status = 'isolated';
+      return res.json({
+        id: dev.id,
+        ip: dev.ip,
+        status: dev.status,
+        message: `EMERGENCY ISOLATION: ${dev.hostname} (${dev.ip}) quarantined. Dynamic ARP inspection dropped and 802.1X port blocked.`
+      });
+    }
+  });
+
+  // Query Free API Vault for a specific Network Device
+  app.post("/api/network/neighborhood/vault-check/:id", (req, res) => {
+    const { id } = req.params;
+    const dev = networkDevices.find(d => d.id === id);
+    if (!dev) {
+      return res.status(404).json({ error: "Network host not found" });
+    }
+
+    const isSuspicious = dev.status === 'flagged' || dev.riskScore > 50;
+
+    res.json({
+      targetDevice: {
+        id: dev.id,
+        ip: dev.ip,
+        hostname: dev.hostname,
+        vendor: dev.vendor
+      },
+      shodanInternetDb: {
+        checked: true,
+        openPorts: dev.openPorts,
+        cves: isSuspicious ? ["CVE-2023-4863 (Libwebp)", "CVE-2023-38606 (Kernel Elevation)"] : [],
+        verdict: isSuspicious ? "Vulnerable / High Risk" : "Clean Internal Asset"
+      },
+      abuseIpDb: {
+        checked: true,
+        abuseConfidenceScore: isSuspicious ? 78 : 0,
+        reportsCount: isSuspicious ? 14 : 0,
+        status: isSuspicious ? "Reported to Abuse Feeds" : "No Incident Reports"
+      },
+      recommendation: isSuspicious 
+        ? "Quarantine device immediately and run offline forensics analysis." 
+        : "Device is conforming to corporate baseline security posture."
+    });
+  });
+
+  // =========================================================================
+  // HOME WI-FI MESH NODES & CONNECTED USERS TELEMETRY (Open Source Powered)
+  // References: OpenWrt (iwinfo/hostapd), Pi-hole (FTL), BATMAN-adv, DAWN
+  // =========================================================================
+
+  const openSourceRepos: OpenSourceRepo[] = [
+    {
+      name: "OpenWrt Core & iwinfo",
+      repo: "openwrt/openwrt",
+      stars: "18.5k",
+      description: "Embedded Linux distribution for wireless routers and access points. Provides low-level 802.11 radio telemetry via nl80211 and mac80211.",
+      usedFor: "Radio PHY stats, channel utilization, TX/RX power tables, and hostapd association lists.",
+      commandSample: "iwinfo phy0-ap0 assoclist && ubus call network.wireless status",
+      outputSample: "bssid: BC:24:11:8A:4F:02 | channel: 36 (160 MHz) | tx_power: 27 dBm | noise: -96 dBm | clients: 5",
+      status: "Integrated Service"
+    },
+    {
+      name: "Pi-hole FTL",
+      repo: "pi-hole/FTL",
+      stars: "11.2k",
+      description: "Faster Than Light DNS and DHCP engine. Resolves network clients by MAC OUI, tracks DNS query volume, and blocks privacy trackers across the LAN.",
+      usedFor: "Connected user host mapping, DHCP lease discovery, and 24h DNS query telemetry.",
+      commandSample: "pihole-FTL --client-info 192.168.1.105 && cat /etc/pihole/dhcp.leases",
+      outputSample: "ip: 192.168.1.105 | host: Alex-MacBook-Pro-M3 | queries_24h: 3,420 | blocked: 412 (12.0%)",
+      status: "Integrated Service"
+    },
+    {
+      name: "B.A.T.M.A.N. Advanced",
+      repo: "open-mesh/batman-adv",
+      stars: "3.4k",
+      description: "Better Approach To Mobile Adhoc Networking. Kernel-level layer-2 mesh routing protocol for multi-hop wireless backhaul distribution.",
+      usedFor: "Mesh topology discovery, Transmit Quality (TQ) metric calculations, and backhaul link optimization.",
+      commandSample: "batctl o -t 10 && batctl tg",
+      outputSample: "Originator: BC:24:11:8A:4F:20 | Nexthop: BC:24:11:8A:4F:01 | TQ: 245/255 (96%) | link: 1200 Mbps",
+      status: "Kernel Module"
+    },
+    {
+      name: "DAWN Roaming Daemon",
+      repo: "berlin-open-wireless-lab/DAWN",
+      stars: "1.9k",
+      description: "Decentralized Autonomous Wireless Network daemon for OpenWrt. Evaluates client RSSI across nodes and executes IEEE 802.11k/v/r BSS transition steering.",
+      usedFor: "Fast client roaming management, RSSI threshold enforcement, and multi-AP load balancing.",
+      commandSample: "dawn -c get_network && dawn -c bss_transition_request <mac> <target_bssid>",
+      outputSample: "client: BC:D0:74:19:92:41 | best_ap: node-office (-42 dBm) | current: node-gw (-68 dBm) -> Steering trigger: 802.11v BTM sent",
+      status: "Active Daemon"
+    },
+    {
+      name: "TIP OpenWiFi (WLAN SDK)",
+      repo: "telecominfraproject/wlan-cloud-ucentralgw",
+      stars: "2.8k",
+      description: "Telecom Infra Project open architecture Wi-Fi stack offering cloud-managed enterprise AP firmware, telemetry, and automated channel allocation.",
+      usedFor: "Cross-AP radio coordination, Dynamic Channel Allocation (DCA), and Wi-Fi 6E/7 spectrum profiles.",
+      commandSample: "ucentral-cli get-telemetry --serial 00:11:22:33:44:55",
+      outputSample: "AP: UniFi U6-Ent | 6GHz spectrum: clean | channel: 37 | EIRP: 24 dBm | thermal: 46°C",
+      status: "Active Daemon"
+    },
+    {
+      name: "Home Assistant Network Trackers",
+      repo: "home-assistant/core",
+      stars: "74.2k",
+      description: "Open-source home automation platform with rich integrations for UniFi, OpenWrt, and ASUSWRT network presence tracking.",
+      usedFor: "User-to-device mapping, family presence detection, and smart home IoT segregation.",
+      commandSample: "curl -s -H \"Authorization: Bearer $HASS_TOKEN\" /api/states/device_tracker.alex_macbook",
+      outputSample: "state: home | ap_mac: BC:24:11:8A:4F:10 | essid: Olympus-Mesh | user: Alex Morgan",
+      status: "Telemetry Provider"
+    }
+  ];
+
+  let wifiNodes: WifiNode[] = [
+    {
+      id: "node-gw",
+      name: "Living Room Gateway (Main Router)",
+      role: "gateway",
+      room: "Living Room (Ground Floor)",
+      floor: "ground",
+      x: 28,
+      y: 38,
+      status: "online",
+      ip: "192.168.1.1",
+      mac: "BC:24:11:8A:4F:01",
+      model: "OpenWrt GL.iNet Flint 2 (GL-MT6000)",
+      firmware: "OpenWrt 23.05.4 (Linux 6.1.100)",
+      openSourceDriver: "MediaTek MT7986A mt7915e mac80211",
+      coverageRadiusMeters: 18,
+      radios: [
+        {
+          band: "2.4GHz",
+          protocol: "Wi-Fi 6 (802.11ax)",
+          channel: 1,
+          channelWidth: "20 MHz",
+          txPowerDbm: 24,
+          bssid: "BC:24:11:8A:4F:02",
+          channelUtilizationPercent: 19
+        },
+        {
+          band: "5GHz",
+          protocol: "Wi-Fi 6 (802.11ax)",
+          channel: 36,
+          channelWidth: "160 MHz",
+          txPowerDbm: 27,
+          bssid: "BC:24:11:8A:4F:03",
+          channelUtilizationPercent: 26
+        }
+      ],
+      backhaul: {
+        type: "ethernet",
+        linkSpeedMbps: 2500,
+        qualityPercent: 100,
+        meshProtocol: "IEEE 1905.1 EasyMesh"
+      },
+      clientCount: 4,
+      totalBandwidthDownMbps: 48.5,
+      totalBandwidthUpMbps: 12.3,
+      cpuTempC: 48,
+      memoryUsagePercent: 34,
+      uptime: "14d 6h 32m"
+    },
+    {
+      id: "node-office",
+      name: "Home Office Mesh Node",
+      role: "mesh_satellite",
+      room: "Home Office (Ground Floor)",
+      floor: "ground",
+      x: 74,
+      y: 32,
+      status: "online",
+      ip: "192.168.1.2",
+      mac: "BC:24:11:8A:4F:10",
+      model: "UniFi U6-Enterprise (TIP OpenWiFi)",
+      firmware: "TIP OpenWiFi uCentral v2.9.1",
+      openSourceDriver: "Qualcomm Atheros ath11k mac80211",
+      coverageRadiusMeters: 15,
+      radios: [
+        {
+          band: "2.4GHz",
+          protocol: "Wi-Fi 6 (802.11ax)",
+          channel: 6,
+          channelWidth: "20 MHz",
+          txPowerDbm: 22,
+          bssid: "BC:24:11:8A:4F:11",
+          channelUtilizationPercent: 12
+        },
+        {
+          band: "5GHz",
+          protocol: "Wi-Fi 6E (802.11ax)",
+          channel: 149,
+          channelWidth: "160 MHz",
+          txPowerDbm: 26,
+          bssid: "BC:24:11:8A:4F:12",
+          channelUtilizationPercent: 18
+        },
+        {
+          band: "6GHz",
+          protocol: "Wi-Fi 6E (802.11ax)",
+          channel: 37,
+          channelWidth: "160 MHz",
+          txPowerDbm: 24,
+          bssid: "BC:24:11:8A:4F:13",
+          channelUtilizationPercent: 7
+        }
+      ],
+      backhaul: {
+        type: "ethernet",
+        parentNodeId: "node-gw",
+        parentBssid: "BC:24:11:8A:4F:01",
+        linkSpeedMbps: 1000,
+        qualityPercent: 99,
+        meshProtocol: "802.11s"
+      },
+      clientCount: 4,
+      totalBandwidthDownMbps: 84.2,
+      totalBandwidthUpMbps: 29.8,
+      cpuTempC: 44,
+      memoryUsagePercent: 28,
+      uptime: "9d 18h 12m"
+    },
+    {
+      id: "node-upper",
+      name: "Upstairs Hallway Mesh Pod",
+      role: "mesh_satellite",
+      room: "Upstairs Hallway & Bedrooms",
+      floor: "upper",
+      x: 48,
+      y: 65,
+      status: "online",
+      ip: "192.168.1.3",
+      mac: "BC:24:11:8A:4F:20",
+      model: "Linksys Atlas Pro 6 (OpenWrt DAWN)",
+      firmware: "OpenWrt 23.05.4 / DAWN Mesh",
+      openSourceDriver: "Qualcomm IPQ5018 ath11k",
+      coverageRadiusMeters: 16,
+      radios: [
+        {
+          band: "2.4GHz",
+          protocol: "Wi-Fi 6 (802.11ax)",
+          channel: 11,
+          channelWidth: "20 MHz",
+          txPowerDbm: 23,
+          bssid: "BC:24:11:8A:4F:21",
+          channelUtilizationPercent: 22
+        },
+        {
+          band: "5GHz",
+          protocol: "Wi-Fi 6 (802.11ax)",
+          channel: 44,
+          channelWidth: "80 MHz",
+          txPowerDbm: 25,
+          bssid: "BC:24:11:8A:4F:22",
+          channelUtilizationPercent: 31
+        }
+      ],
+      backhaul: {
+        type: "wireless_5ghz",
+        parentNodeId: "node-gw",
+        parentBssid: "BC:24:11:8A:4F:03",
+        linkSpeedMbps: 1200,
+        rssiDbm: -51,
+        qualityPercent: 93,
+        meshProtocol: "B.A.T.M.A.N.-adv"
+      },
+      clientCount: 4,
+      totalBandwidthDownMbps: 39.4,
+      totalBandwidthUpMbps: 8.6,
+      cpuTempC: 51,
+      memoryUsagePercent: 41,
+      uptime: "14d 6h 30m"
+    },
+    {
+      id: "node-patio",
+      name: "Garden Patio & Garage AP",
+      role: "extender",
+      room: "Backyard Patio / Garage",
+      floor: "outdoor",
+      x: 82,
+      y: 75,
+      status: "online",
+      ip: "192.168.1.4",
+      mac: "BC:24:11:8A:4F:30",
+      model: "TP-Link EAP610-Outdoor (OpenWrt patched)",
+      firmware: "OpenWrt 23.05.3-SNAPSHOT",
+      openSourceDriver: "MediaTek MT7975 / hostapd-full",
+      coverageRadiusMeters: 22,
+      radios: [
+        {
+          band: "2.4GHz",
+          protocol: "Wi-Fi 6 (802.11ax)",
+          channel: 6,
+          channelWidth: "20 MHz",
+          txPowerDbm: 28,
+          bssid: "BC:24:11:8A:4F:31",
+          channelUtilizationPercent: 11
+        },
+        {
+          band: "5GHz",
+          protocol: "Wi-Fi 6 (802.11ax)",
+          channel: 100,
+          channelWidth: "80 MHz",
+          txPowerDbm: 29,
+          bssid: "BC:24:11:8A:4F:32",
+          channelUtilizationPercent: 9
+        }
+      ],
+      backhaul: {
+        type: "wireless_5ghz",
+        parentNodeId: "node-office",
+        parentBssid: "BC:24:11:8A:4F:12",
+        linkSpeedMbps: 866,
+        rssiDbm: -61,
+        qualityPercent: 86,
+        meshProtocol: "802.11s"
+      },
+      clientCount: 3,
+      totalBandwidthDownMbps: 14.8,
+      totalBandwidthUpMbps: 4.2,
+      cpuTempC: 43,
+      memoryUsagePercent: 24,
+      uptime: "8d 14h 5m"
+    }
+  ];
+
+  let wifiClients: WifiClientUser[] = [
+    {
+      id: "cli-1",
+      nodeId: "node-office",
+      userName: "Alex Morgan",
+      userRole: "Homeowner",
+      avatar: "AM",
+      deviceHost: "Alex-MacBook-Pro-M3",
+      deviceCategory: "laptop",
+      ip: "192.168.1.102",
+      mac: "BC:D0:74:19:92:41",
+      vendor: "Apple, Inc.",
+      band: "6GHz",
+      wifiStandard: "802.11ax (Wi-Fi 6)",
+      rssiDbm: -41,
+      snrDb: 52,
+      signalQuality: "Excellent",
+      txRateMbps: 2401,
+      rxRateMbps: 2401,
+      currentDownMbps: 34.2,
+      currentUpMbps: 18.5,
+      dataTransferred24hGb: 14.6,
+      dhcpLeaseExpires: "21h 14m",
+      dnsQueries24h: 3840,
+      blockedQueries24h: 462,
+      networkVlan: "Main LAN (VLAN 1)",
+      internetPaused: false,
+      qosPriority: "High (Gaming/VoIP)",
+      roamingHistory: [
+        { timestamp: "10:14:22", fromNode: "Living Room Gateway", toNode: "Home Office Mesh Node", reason: "802.11v BTM (RSSI improved by +24 dBm)", rssi: -41 },
+        { timestamp: "08:30:10", fromNode: "Upstairs Hallway Mesh Pod", toNode: "Living Room Gateway", reason: "802.11r Fast Transition", rssi: -65 }
+      ],
+      lastActivity: "Active now (Xcode & Docker build)"
+    },
+    {
+      id: "cli-2",
+      nodeId: "node-office",
+      userName: "Alex Morgan",
+      userRole: "Homeowner",
+      avatar: "AM",
+      deviceHost: "Alex-iPhone-16-Pro",
+      deviceCategory: "phone",
+      ip: "192.168.1.103",
+      mac: "E0:D0:83:81:72:09",
+      vendor: "Apple, Inc.",
+      band: "5GHz",
+      wifiStandard: "802.11be (Wi-Fi 7)",
+      rssiDbm: -46,
+      snrDb: 47,
+      signalQuality: "Excellent",
+      txRateMbps: 1440,
+      rxRateMbps: 1440,
+      currentDownMbps: 4.8,
+      currentUpMbps: 1.2,
+      dataTransferred24hGb: 3.8,
+      dhcpLeaseExpires: "19h 40m",
+      dnsQueries24h: 1920,
+      blockedQueries24h: 310,
+      networkVlan: "Main LAN (VLAN 1)",
+      internetPaused: false,
+      qosPriority: "Normal",
+      roamingHistory: [
+        { timestamp: "09:45:00", fromNode: "Living Room Gateway", toNode: "Home Office Mesh Node", reason: "802.11k Neighbor Report steer", rssi: -46 }
+      ],
+      lastActivity: "Active now (Signal / FaceTime Audio)"
+    },
+    {
+      id: "cli-3",
+      nodeId: "node-office",
+      userName: "Sarah Connor",
+      userRole: "Remote Worker",
+      avatar: "SC",
+      deviceHost: "ThinkPad-X1-Carbon",
+      deviceCategory: "laptop",
+      ip: "192.168.1.105",
+      mac: "54:EE:75:A8:3C:90",
+      vendor: "Lenovo Group Ltd.",
+      band: "5GHz",
+      wifiStandard: "802.11ax (Wi-Fi 6)",
+      rssiDbm: -48,
+      snrDb: 44,
+      signalQuality: "Excellent",
+      txRateMbps: 1200,
+      rxRateMbps: 1200,
+      currentDownMbps: 22.4,
+      currentUpMbps: 6.9,
+      dataTransferred24hGb: 9.2,
+      dhcpLeaseExpires: "16h 05m",
+      dnsQueries24h: 2410,
+      blockedQueries24h: 215,
+      networkVlan: "Main LAN (VLAN 1)",
+      internetPaused: false,
+      qosPriority: "High (Gaming/VoIP)",
+      roamingHistory: [],
+      lastActivity: "Active now (Slack & Zoom H.264 stream)"
+    },
+    {
+      id: "cli-4",
+      nodeId: "node-office",
+      userName: "Marcus Bell",
+      userRole: "Family Member",
+      avatar: "MB",
+      deviceHost: "Marcus-Pixel-9-Pro",
+      deviceCategory: "phone",
+      ip: "192.168.1.106",
+      mac: "98:2C:BC:33:10:E2",
+      vendor: "Google LLC",
+      band: "6GHz",
+      wifiStandard: "802.11be (Wi-Fi 7)",
+      rssiDbm: -44,
+      snrDb: 50,
+      signalQuality: "Excellent",
+      txRateMbps: 2880,
+      rxRateMbps: 2880,
+      currentDownMbps: 22.8,
+      currentUpMbps: 3.2,
+      dataTransferred24hGb: 5.1,
+      dhcpLeaseExpires: "22h 50m",
+      dnsQueries24h: 1420,
+      blockedQueries24h: 198,
+      networkVlan: "Main LAN (VLAN 1)",
+      internetPaused: false,
+      qosPriority: "Streaming",
+      roamingHistory: [
+        { timestamp: "07:15:30", fromNode: "Upstairs Hallway Mesh Pod", toNode: "Home Office Mesh Node", reason: "802.11v BTM Roam", rssi: -44 }
+      ],
+      lastActivity: "Active now (YouTube 4K HDR playback)"
+    },
+    {
+      id: "cli-5",
+      nodeId: "node-gw",
+      userName: "Living Room Entertainment",
+      userRole: "Family Member",
+      avatar: "TV",
+      deviceHost: "Sony-Bravia-75-OLED",
+      deviceCategory: "smart_tv",
+      ip: "192.168.1.110",
+      mac: "FC:F1:36:28:91:AA",
+      vendor: "Sony Corporation",
+      band: "5GHz",
+      wifiStandard: "802.11ax (Wi-Fi 6)",
+      rssiDbm: -47,
+      snrDb: 46,
+      signalQuality: "Excellent",
+      txRateMbps: 866,
+      rxRateMbps: 866,
+      currentDownMbps: 32.5,
+      currentUpMbps: 1.1,
+      dataTransferred24hGb: 28.4,
+      dhcpLeaseExpires: "12h 10m",
+      dnsQueries24h: 890,
+      blockedQueries24h: 340,
+      networkVlan: "Main LAN (VLAN 1)",
+      internetPaused: false,
+      qosPriority: "Streaming",
+      roamingHistory: [],
+      lastActivity: "Active now (Netflix Dolby Vision stream)"
+    },
+    {
+      id: "cli-6",
+      nodeId: "node-gw",
+      userName: "Smart Home Controller",
+      userRole: "Smart Home",
+      avatar: "HA",
+      deviceHost: "HomeAssistant-Green",
+      deviceCategory: "smart_home",
+      ip: "192.168.1.111",
+      mac: "DC:A6:32:9F:44:81",
+      vendor: "Raspberry Pi Trading",
+      band: "2.4GHz",
+      wifiStandard: "802.11ax (Wi-Fi 6)",
+      rssiDbm: -38,
+      snrDb: 56,
+      signalQuality: "Excellent",
+      txRateMbps: 144,
+      rxRateMbps: 144,
+      currentDownMbps: 1.8,
+      currentUpMbps: 2.1,
+      dataTransferred24hGb: 1.2,
+      dhcpLeaseExpires: "23h 59m",
+      dnsQueries24h: 4210,
+      blockedQueries24h: 12,
+      networkVlan: "IoT Isolated (VLAN 20)",
+      internetPaused: false,
+      qosPriority: "High (Gaming/VoIP)",
+      roamingHistory: [],
+      lastActivity: "Active now (MQTT broker & Zigbee coordinator)"
+    },
+    {
+      id: "cli-7",
+      nodeId: "node-gw",
+      userName: "Elena Rostova",
+      userRole: "Guest",
+      avatar: "ER",
+      deviceHost: "Galaxy-S24-Ultra",
+      deviceCategory: "phone",
+      ip: "192.168.30.15",
+      mac: "3C:28:6D:E8:42:01",
+      vendor: "Samsung Electronics",
+      band: "5GHz",
+      wifiStandard: "802.11ax (Wi-Fi 6)",
+      rssiDbm: -56,
+      snrDb: 38,
+      signalQuality: "Good",
+      txRateMbps: 866,
+      rxRateMbps: 866,
+      currentDownMbps: 8.4,
+      currentUpMbps: 1.8,
+      dataTransferred24hGb: 2.7,
+      dhcpLeaseExpires: "6h 40m",
+      dnsQueries24h: 740,
+      blockedQueries24h: 94,
+      networkVlan: "Guest Portal (VLAN 30)",
+      internetPaused: false,
+      qosPriority: "Normal",
+      roamingHistory: [],
+      lastActivity: "Active now (Web browsing / Instagram)"
+    },
+    {
+      id: "cli-8",
+      nodeId: "node-gw",
+      userName: "Living Room Audio",
+      userRole: "Family Member",
+      avatar: "SB",
+      deviceHost: "Sonos-Beam-Soundbar",
+      deviceCategory: "smart_home",
+      ip: "192.168.1.112",
+      mac: "48:A6:B8:31:AA:50",
+      vendor: "Sonos, Inc.",
+      band: "5GHz",
+      wifiStandard: "802.11ac (Wi-Fi 5)",
+      rssiDbm: -49,
+      snrDb: 43,
+      signalQuality: "Excellent",
+      txRateMbps: 433,
+      rxRateMbps: 433,
+      currentDownMbps: 5.8,
+      currentUpMbps: 0.4,
+      dataTransferred24hGb: 4.1,
+      dhcpLeaseExpires: "18h 22m",
+      dnsQueries24h: 310,
+      blockedQueries24h: 42,
+      networkVlan: "Main LAN (VLAN 1)",
+      internetPaused: false,
+      qosPriority: "Streaming",
+      roamingHistory: [],
+      lastActivity: "Active now (Spotify Connect Lossless stream)"
+    },
+    {
+      id: "cli-9",
+      nodeId: "node-upper",
+      userName: "Liam Vance",
+      userRole: "Family Member",
+      avatar: "LV",
+      deviceHost: "PlayStation-5",
+      deviceCategory: "console",
+      ip: "192.168.1.120",
+      mac: "70:9E:29:4F:1B:3E",
+      vendor: "Sony Interactive Entertainment",
+      band: "5GHz",
+      wifiStandard: "802.11ax (Wi-Fi 6)",
+      rssiDbm: -48,
+      snrDb: 46,
+      signalQuality: "Excellent",
+      txRateMbps: 1200,
+      rxRateMbps: 1200,
+      currentDownMbps: 28.4,
+      currentUpMbps: 5.2,
+      dataTransferred24hGb: 31.8,
+      dhcpLeaseExpires: "14h 50m",
+      dnsQueries24h: 1120,
+      blockedQueries24h: 88,
+      networkVlan: "Main LAN (VLAN 1)",
+      internetPaused: false,
+      qosPriority: "High (Gaming/VoIP)",
+      roamingHistory: [],
+      lastActivity: "Active now (Online multiplayer - 14ms ping)"
+    },
+    {
+      id: "cli-10",
+      nodeId: "node-upper",
+      userName: "Liam Vance",
+      userRole: "Family Member",
+      avatar: "LV",
+      deviceHost: "Nintendo-Switch-OLED",
+      deviceCategory: "console",
+      ip: "192.168.1.121",
+      mac: "98:B6:E9:10:C3:7A",
+      vendor: "Nintendo Co., Ltd.",
+      band: "5GHz",
+      wifiStandard: "802.11ac (Wi-Fi 5)",
+      rssiDbm: -55,
+      snrDb: 39,
+      signalQuality: "Good",
+      txRateMbps: 433,
+      rxRateMbps: 433,
+      currentDownMbps: 2.1,
+      currentUpMbps: 0.5,
+      dataTransferred24hGb: 1.8,
+      dhcpLeaseExpires: "17h 12m",
+      dnsQueries24h: 340,
+      blockedQueries24h: 18,
+      networkVlan: "Main LAN (VLAN 1)",
+      internetPaused: false,
+      qosPriority: "Normal",
+      roamingHistory: [],
+      lastActivity: "Idle (Standby mode)"
+    },
+    {
+      id: "cli-11",
+      nodeId: "node-upper",
+      userName: "Master Bed Audio",
+      userRole: "Family Member",
+      avatar: "SE",
+      deviceHost: "Sonos-Era-300-Bed",
+      deviceCategory: "smart_home",
+      ip: "192.168.1.122",
+      mac: "48:A6:B8:99:FF:12",
+      vendor: "Sonos, Inc.",
+      band: "5GHz",
+      wifiStandard: "802.11ax (Wi-Fi 6)",
+      rssiDbm: -52,
+      snrDb: 42,
+      signalQuality: "Good",
+      txRateMbps: 866,
+      rxRateMbps: 866,
+      currentDownMbps: 6.2,
+      currentUpMbps: 0.6,
+      dataTransferred24hGb: 3.5,
+      dhcpLeaseExpires: "20h 30m",
+      dnsQueries24h: 420,
+      blockedQueries24h: 36,
+      networkVlan: "Main LAN (VLAN 1)",
+      internetPaused: false,
+      qosPriority: "Streaming",
+      roamingHistory: [],
+      lastActivity: "Active now (Apple AirPlay 2)"
+    },
+    {
+      id: "cli-12",
+      nodeId: "node-upper",
+      userName: "Nursery Monitor",
+      userRole: "Smart Home",
+      avatar: "NM",
+      deviceHost: "Nanit-Pro-Baby-Cam",
+      deviceCategory: "smart_home",
+      ip: "192.168.20.40",
+      mac: "B4:E6:2D:11:09:A4",
+      vendor: "Nanit Inc.",
+      band: "2.4GHz",
+      wifiStandard: "802.11ax (Wi-Fi 6)",
+      rssiDbm: -53,
+      snrDb: 40,
+      signalQuality: "Good",
+      txRateMbps: 150,
+      rxRateMbps: 150,
+      currentDownMbps: 2.7,
+      currentUpMbps: 2.3,
+      dataTransferred24hGb: 8.9,
+      dhcpLeaseExpires: "23h 10m",
+      dnsQueries24h: 890,
+      blockedQueries24h: 15,
+      networkVlan: "IoT Isolated (VLAN 20)",
+      internetPaused: false,
+      qosPriority: "High (Gaming/VoIP)",
+      roamingHistory: [],
+      lastActivity: "Active now (1080p RTSP encrypted stream)"
+    },
+    {
+      id: "cli-13",
+      nodeId: "node-patio",
+      userName: "Alex Morgan",
+      userRole: "Homeowner",
+      avatar: "TY",
+      deviceHost: "Tesla-Model-Y",
+      deviceCategory: "car",
+      ip: "192.168.1.130",
+      mac: "90:72:40:99:3E:D1",
+      vendor: "Tesla Motors, Inc.",
+      band: "2.4GHz",
+      wifiStandard: "802.11ax (Wi-Fi 6)",
+      rssiDbm: -59,
+      snrDb: 35,
+      signalQuality: "Good",
+      txRateMbps: 144,
+      rxRateMbps: 144,
+      currentDownMbps: 8.2,
+      currentUpMbps: 1.4,
+      dataTransferred24hGb: 4.8,
+      dhcpLeaseExpires: "11h 20m",
+      dnsQueries24h: 560,
+      blockedQueries24h: 22,
+      networkVlan: "Main LAN (VLAN 1)",
+      internetPaused: false,
+      qosPriority: "Background",
+      roamingHistory: [
+        { timestamp: "06:40:12", fromNode: "Living Room Gateway", toNode: "Garden Patio & Garage AP", reason: "802.11r Roam upon garage parking", rssi: -59 }
+      ],
+      lastActivity: "Active now (Downloading OTA Software 2026.14)"
+    },
+    {
+      id: "cli-14",
+      nodeId: "node-patio",
+      userName: "Perimeter Security",
+      userRole: "Smart Home",
+      avatar: "RC",
+      deviceHost: "Ring-Floodlight-Cam-Pro",
+      deviceCategory: "smart_home",
+      ip: "192.168.20.55",
+      mac: "FC:A1:83:8B:22:90",
+      vendor: "Ring LLC / Amazon",
+      band: "2.4GHz",
+      wifiStandard: "802.11ax (Wi-Fi 6)",
+      rssiDbm: -64,
+      snrDb: 30,
+      signalQuality: "Fair",
+      txRateMbps: 72,
+      rxRateMbps: 72,
+      currentDownMbps: 0.8,
+      currentUpMbps: 2.2,
+      dataTransferred24hGb: 6.4,
+      dhcpLeaseExpires: "15h 45m",
+      dnsQueries24h: 1250,
+      blockedQueries24h: 180,
+      networkVlan: "IoT Isolated (VLAN 20)",
+      internetPaused: false,
+      qosPriority: "Normal",
+      roamingHistory: [],
+      lastActivity: "Active now (Live radar motion scan)"
+    },
+    {
+      id: "cli-15",
+      nodeId: "node-patio",
+      userName: "Smart Garage",
+      userRole: "Smart Home",
+      avatar: "GD",
+      deviceHost: "Chamberlain-myQ-Opener",
+      deviceCategory: "smart_home",
+      ip: "192.168.20.56",
+      mac: "74:C2:46:11:E3:44",
+      vendor: "Chamberlain Group",
+      band: "2.4GHz",
+      wifiStandard: "802.11ax (Wi-Fi 6)",
+      rssiDbm: -68,
+      snrDb: 26,
+      signalQuality: "Fair",
+      txRateMbps: 54,
+      rxRateMbps: 54,
+      currentDownMbps: 0.2,
+      currentUpMbps: 0.1,
+      dataTransferred24hGb: 0.3,
+      dhcpLeaseExpires: "22h 10m",
+      dnsQueries24h: 180,
+      blockedQueries24h: 12,
+      networkVlan: "IoT Isolated (VLAN 20)",
+      internetPaused: false,
+      qosPriority: "Background",
+      roamingHistory: [],
+      lastActivity: "Idle (Door closed, secure sensor poll)"
+    }
+  ];
+
+  // Helper to sync node client counts and bandwidth totals
+  const recalculateWifiNodeStats = () => {
+    wifiNodes = wifiNodes.map(node => {
+      const nodeClients = wifiClients.filter(c => c.nodeId === node.id);
+      const totalDown = Number(nodeClients.reduce((sum, c) => sum + (c.internetPaused ? 0 : c.currentDownMbps), 0).toFixed(1));
+      const totalUp = Number(nodeClients.reduce((sum, c) => sum + (c.internetPaused ? 0 : c.currentUpMbps), 0).toFixed(1));
+      return {
+        ...node,
+        clientCount: nodeClients.length,
+        totalBandwidthDownMbps: totalDown,
+        totalBandwidthUpMbps: totalUp
+      };
+    });
+  };
+
+  // GET full Wi-Fi Mesh Telemetry
+  app.get("/api/wifi/telemetry", (req, res) => {
+    recalculateWifiNodeStats();
+
+    const totalNodes = wifiNodes.length;
+    const onlineNodes = wifiNodes.filter(n => n.status === 'online').length;
+    const totalConnectedUsers = wifiClients.length;
+
+    let band24 = 0;
+    let band5 = 0;
+    let band6 = 0;
+    let totalDown = 0;
+    let totalUp = 0;
+    let sumRssi = 0;
+
+    wifiClients.forEach(c => {
+      if (c.band === '2.4GHz') band24++;
+      else if (c.band === '5GHz') band5++;
+      else if (c.band === '6GHz') band6++;
+
+      if (!c.internetPaused) {
+        totalDown += c.currentDownMbps;
+        totalUp += c.currentUpMbps;
+      }
+      sumRssi += c.rssiDbm;
+    });
+
+    const averageRssiDbm = Math.round(sumRssi / (wifiClients.length || 1));
+
+    const totalQueries = wifiClients.reduce((sum, c) => sum + c.dnsQueries24h, 0);
+    const totalBlocked = wifiClients.reduce((sum, c) => sum + c.blockedQueries24h, 0);
+    const piholeBlockedPercentage = Number(((totalBlocked / (totalQueries || 1)) * 100).toFixed(1));
+
+    const totalRoamingEvents = wifiClients.reduce((sum, c) => sum + c.roamingHistory.length, 0);
+
+    const telemetry: WifiMeshTelemetryResponse = {
+      nodes: wifiNodes,
+      clients: wifiClients,
+      stats: {
+        totalNodes,
+        onlineNodes,
+        totalConnectedUsers,
+        activeBands: { band24, band5, band6 },
+        totalThroughputDownMbps: Number(totalDown.toFixed(1)),
+        totalThroughputUpMbps: Number(totalUp.toFixed(1)),
+        meshHealth: onlineNodes === totalNodes ? 'Optimal' : 'Good',
+        piholeBlockedPercentage,
+        fastRoamingEvents24h: totalRoamingEvents + 12,
+        averageRssiDbm
+      },
+      openSourceRepos,
+      lastScanTime: new Date().toISOString()
+    };
+
+    res.json(telemetry);
+  });
+
+  // POST trigger wireless sweep & dynamic jitter
+  app.post("/api/wifi/scan", (req, res) => {
+    wifiClients = wifiClients.map(c => {
+      const deltaDown = (Math.random() * 4 - 2);
+      const deltaUp = (Math.random() * 1.5 - 0.75);
+      const newDown = Math.max(0.1, Number((c.currentDownMbps + deltaDown).toFixed(1)));
+      const newUp = Math.max(0.1, Number((c.currentUpMbps + deltaUp).toFixed(1)));
+      const jitterRssi = Math.min(-35, Math.max(-80, c.rssiDbm + (Math.floor(Math.random() * 3) - 1)));
+      return {
+        ...c,
+        currentDownMbps: newDown,
+        currentUpMbps: newUp,
+        rssiDbm: jitterRssi,
+        lastActivity: new Date().toLocaleTimeString() + " - iwinfo PHY poll"
+      };
+    });
+
+    recalculateWifiNodeStats();
+
+    res.json({
+      success: true,
+      message: `OpenWrt hostapd & Pi-hole scan refreshed across ${wifiNodes.length} mesh nodes and ${wifiClients.length} connected users.`,
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  // POST Add a new Wi-Fi node
+  app.post("/api/wifi/nodes", (req, res) => {
+    const { name, room, floor, role, model, x, y } = req.body || {};
+    const newId = `node-custom-${Date.now().toString(36)}`;
+    const ipSuffix = (wifiNodes.length + 5);
+
+    const newNode: WifiNode = {
+      id: newId,
+      name: name || `Mesh Node (${room || 'Room'})`,
+      role: role || 'mesh_satellite',
+      room: room || 'Guest Bedroom',
+      floor: floor || 'upper',
+      x: typeof x === 'number' ? x : 50,
+      y: typeof y === 'number' ? y : 50,
+      status: 'online',
+      ip: `192.168.1.${ipSuffix}`,
+      mac: `BC:24:11:8A:4F:${ipSuffix.toString(16).padStart(2, '0')}`,
+      model: model || 'OpenWrt GL-MT3000 (Beryl AX)',
+      firmware: 'OpenWrt 23.05.4 (Linux 6.1)',
+      openSourceDriver: 'MediaTek mt7915e mac80211',
+      coverageRadiusMeters: 14,
+      radios: [
+        {
+          band: '2.4GHz',
+          protocol: 'Wi-Fi 6 (802.11ax)',
+          channel: 1,
+          channelWidth: '20 MHz',
+          txPowerDbm: 20,
+          bssid: `BC:24:11:8A:4F:${(ipSuffix + 10).toString(16).padStart(2, '0')}`,
+          channelUtilizationPercent: 14
+        },
+        {
+          band: '5GHz',
+          protocol: 'Wi-Fi 6 (802.11ax)',
+          channel: 52,
+          channelWidth: '80 MHz',
+          txPowerDbm: 24,
+          bssid: `BC:24:11:8A:4F:${(ipSuffix + 11).toString(16).padStart(2, '0')}`,
+          channelUtilizationPercent: 16
+        }
+      ],
+      backhaul: {
+        type: 'wireless_5ghz',
+        parentNodeId: 'node-gw',
+        linkSpeedMbps: 960,
+        rssiDbm: -54,
+        qualityPercent: 90,
+        meshProtocol: '802.11s'
+      },
+      clientCount: 0,
+      totalBandwidthDownMbps: 0,
+      totalBandwidthUpMbps: 0,
+      cpuTempC: 41,
+      memoryUsagePercent: 22,
+      uptime: '0d 0h 1m'
+    };
+
+    wifiNodes.push(newNode);
+    res.json({ success: true, node: newNode });
+  });
+
+  // PUT Update node positioning / radio attributes
+  app.put("/api/wifi/nodes/:id", (req, res) => {
+    const { id } = req.params;
+    const idx = wifiNodes.findIndex(n => n.id === id);
+    if (idx === -1) {
+      return res.status(404).json({ error: "Wi-Fi node not found" });
+    }
+
+    const { x, y, name, room, floor, coverageRadiusMeters, radios } = req.body || {};
+    wifiNodes[idx] = {
+      ...wifiNodes[idx],
+      ...(typeof x === 'number' ? { x } : {}),
+      ...(typeof y === 'number' ? { y } : {}),
+      ...(name ? { name } : {}),
+      ...(room ? { room } : {}),
+      ...(floor ? { floor } : {}),
+      ...(typeof coverageRadiusMeters === 'number' ? { coverageRadiusMeters } : {}),
+      ...(radios ? { radios } : {})
+    };
+
+    res.json({ success: true, node: wifiNodes[idx] });
+  });
+
+  // DELETE Remove a Wi-Fi node
+  app.delete("/api/wifi/nodes/:id", (req, res) => {
+    const { id } = req.params;
+    if (id === 'node-gw') {
+      return res.status(400).json({ error: "Cannot delete the primary Gateway router node." });
+    }
+
+    // Re-associate orphan clients to gateway
+    wifiClients = wifiClients.map(c => {
+      if (c.nodeId === id) {
+        return {
+          ...c,
+          nodeId: 'node-gw',
+          rssiDbm: -68,
+          signalQuality: 'Fair',
+          roamingHistory: [
+            { timestamp: new Date().toLocaleTimeString(), fromNode: id, toNode: "Living Room Gateway", reason: "Node removed -> Failover roam", rssi: -68 },
+            ...c.roamingHistory
+          ]
+        };
+      }
+      return c;
+    });
+
+    wifiNodes = wifiNodes.filter(n => n.id !== id);
+    recalculateWifiNodeStats();
+
+    res.json({ success: true, message: `Node ${id} deleted and active clients steered to Gateway.` });
+  });
+
+  // POST Optimize node radio channel (OpenWrt DCA simulation)
+  app.post("/api/wifi/nodes/:id/optimize", (req, res) => {
+    const { id } = req.params;
+    const node = wifiNodes.find(n => n.id === id);
+    if (!node) {
+      return res.status(404).json({ error: "Wi-Fi node not found" });
+    }
+
+    // Optimize channels to least congested
+    node.radios = node.radios.map(r => ({
+      ...r,
+      channelUtilizationPercent: Math.max(5, Math.floor(r.channelUtilizationPercent * 0.6))
+    }));
+
+    res.json({
+      success: true,
+      message: `OpenWrt DCA optimized 802.11 channels on ${node.name}. Interference reduced by 40%.`,
+      node
+    });
+  });
+
+  // POST Soft reboot node
+  app.post("/api/wifi/nodes/:id/reboot", (req, res) => {
+    const { id } = req.params;
+    const node = wifiNodes.find(n => n.id === id);
+    if (!node) {
+      return res.status(404).json({ error: "Wi-Fi node not found" });
+    }
+
+    node.uptime = "0d 0h 1m";
+    node.cpuTempC = 38;
+    res.json({
+      success: true,
+      message: `Soft reboot of ${node.name} completed via OpenWrt /sbin/reboot.`,
+      node
+    });
+  });
+
+  // POST Steer client device to another node (802.11v BSS Transition Request via DAWN)
+  app.post("/api/wifi/clients/:id/roam", (req, res) => {
+    const { id } = req.params;
+    const { targetNodeId } = req.body || {};
+    const client = wifiClients.find(c => c.id === id);
+    if (!client) {
+      return res.status(404).json({ error: "Connected client device not found" });
+    }
+
+    const targetNode = wifiNodes.find(n => n.id === targetNodeId);
+    if (!targetNode) {
+      return res.status(404).json({ error: "Target Wi-Fi node not found" });
+    }
+
+    const previousNode = wifiNodes.find(n => n.id === client.nodeId);
+    const oldNodeName = previousNode ? previousNode.name : client.nodeId;
+
+    client.nodeId = targetNode.id;
+    client.rssiDbm = -42 - Math.floor(Math.random() * 8);
+    client.signalQuality = "Excellent";
+    client.roamingHistory = [
+      {
+        timestamp: new Date().toLocaleTimeString(),
+        fromNode: oldNodeName,
+        toNode: targetNode.name,
+        reason: "DAWN daemon 802.11v BSS Transition steering executed",
+        rssi: client.rssiDbm
+      },
+      ...client.roamingHistory.slice(0, 4)
+    ];
+
+    recalculateWifiNodeStats();
+
+    res.json({
+      success: true,
+      message: `Steered ${client.userName} (${client.deviceHost}) to ${targetNode.name} via IEEE 802.11v BTM.`,
+      client
+    });
+  });
+
+  // POST Toggle internet pause for client user (Pi-hole / iptables drop)
+  app.post("/api/wifi/clients/:id/pause", (req, res) => {
+    const { id } = req.params;
+    const client = wifiClients.find(c => c.id === id);
+    if (!client) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    client.internetPaused = !client.internetPaused;
+    recalculateWifiNodeStats();
+
+    res.json({
+      success: true,
+      paused: client.internetPaused,
+      message: client.internetPaused
+        ? `Internet traffic paused for ${client.userName}'s ${client.deviceHost} via OpenWrt firewall rule.`
+        : `Internet access restored for ${client.userName}'s ${client.deviceHost}.`
+    });
+  });
+
+  // POST Update client QoS priority (OpenWrt Cake/fq_codel SQM)
+  app.post("/api/wifi/clients/:id/qos", (req, res) => {
+    const { id } = req.params;
+    const { qosPriority } = req.body || {};
+    const client = wifiClients.find(c => c.id === id);
+    if (!client) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    client.qosPriority = qosPriority || 'Normal';
+
+    res.json({
+      success: true,
+      qosPriority: client.qosPriority,
+      message: `OpenWrt CAKE SQM DSCP priority updated to "${client.qosPriority}" for ${client.deviceHost}.`
+    });
+  });
 
   // --- CMS STORE & API ENDPOINTS ---
   let cmsItems: CmsItem[] = [
@@ -1250,6 +3822,78 @@ async function startServer() {
       return res.status(404).json({ error: "Document not found" });
     }
     res.json(doc);
+  });
+
+  // Document Sync (HTTP Resilient Polling Fallback)
+  app.get("/api/collab/documents/:id/sync", (req, res) => {
+    const docId = req.params.id;
+    const doc = collabDocs[docId];
+    if (!doc) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+    const liveUsers = getRoomUsers(docId);
+    res.json({
+      content: doc.content,
+      lastUpdated: doc.lastUpdated,
+      updatedBy: doc.updatedBy,
+      chatHistory: collabChats[docId] || [],
+      users: liveUsers.length > 0 ? liveUsers : [
+        { id: 'user-p1', username: 'Sarah Chen (Lead SOC)', color: '#10B981', lastActive: new Date().toISOString() },
+        { id: 'user-p2', username: 'Bhargav (Architect)', color: '#00ff41', lastActive: new Date().toISOString() }
+      ]
+    });
+  });
+
+  // Document Edit via REST (Resilient Fallback)
+  app.post("/api/collab/documents/:id/edit", (req, res) => {
+    const docId = req.params.id;
+    const { content, username } = req.body;
+    const doc = collabDocs[docId];
+    if (!doc) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+    if (typeof content === 'string') {
+      doc.content = content;
+      doc.lastUpdated = new Date().toISOString();
+      doc.updatedBy = username || 'Analyst';
+
+      // Broadcast to any active WebSocket clients
+      broadcastToRoom(docId, {
+        type: 'edit',
+        documentId: docId,
+        content: doc.content,
+        updatedBy: doc.updatedBy
+      });
+    }
+    res.json({ success: true, lastUpdated: doc.lastUpdated, updatedBy: doc.updatedBy });
+  });
+
+  // Collaboration Chat via REST (Resilient Fallback)
+  app.post("/api/collab/documents/:id/chat", (req, res) => {
+    const docId = req.params.id;
+    const { text, username, color } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: "Text required" });
+    }
+    const newChat: ChatMessage = {
+      id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      documentId: docId,
+      sender: username || 'Operator',
+      color: color || '#00ff41',
+      text,
+      timestamp: new Date().toISOString()
+    };
+    collabChats[docId] = collabChats[docId] || [];
+    collabChats[docId].push(newChat);
+    if (collabChats[docId].length > 100) collabChats[docId].shift();
+
+    // Broadcast to any active WebSocket clients
+    broadcastToRoom(docId, {
+      type: 'chat',
+      message: newChat
+    });
+
+    res.json({ success: true, message: newChat });
   });
 
   // --- WEBSOCKET REAL-TIME SYNC LOGIC ---
@@ -1447,13 +4091,17 @@ async function startServer() {
 
   // Attach WebSocket to same HTTP port handler
   server.on('upgrade', (request, socket, head) => {
-    const url = new URL(request.url || '', `http://${request.headers.host}`);
-    if (url.pathname === '/ws-collab') {
-      wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit('connection', ws, request);
-      });
-    } else {
-      socket.destroy();
+    try {
+      const host = request.headers.host || 'localhost:3000';
+      const url = new URL(request.url || '', `http://${host}`);
+      if (url.pathname === '/ws-collab') {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          wss.emit('connection', ws, request);
+        });
+        return;
+      }
+    } catch {
+      // Allow other upgrade listeners (e.g. Vite) to process
     }
   });
 

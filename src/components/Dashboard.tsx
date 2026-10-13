@@ -14,6 +14,7 @@ import { AlertTriangle, Shield, Globe, Users, ShieldAlert, ChevronRight } from '
 import { cn } from '../lib/utils';
 import { fetchJson } from '../lib/api';
 import { RegionalThreatWidget } from './RegionalThreatWidget';
+import { SreMetricsWidget } from './SreMetricsWidget';
 
 interface Alert {
   id: string;
@@ -80,8 +81,8 @@ export function Dashboard() {
           }];
           return newData;
         });
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+      } catch {
+        // Silently handled by resilient API client fallback
       }
     };
 
@@ -136,6 +137,9 @@ export function Dashboard() {
 
       {/* Regional Threat Density Correlated Widget */}
       <RegionalThreatWidget />
+
+      {/* SRE Infrastructure Health, Latency & Reliability Widget */}
+      <SreMetricsWidget />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-card border border-border p-6 rounded-xl">

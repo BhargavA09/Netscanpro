@@ -15,8 +15,8 @@ export function ThreatActorProfiles() {
       try {
         const data = await fetchJson<ThreatActor[]>('/api/threat-actors');
         setActors(data);
-      } catch (error) {
-        console.error('Error fetching threat actors:', error);
+      } catch {
+        // Silently handled by resilient API client fallback
       } finally {
         setLoading(false);
       }

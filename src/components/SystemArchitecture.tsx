@@ -21,6 +21,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { SreMetricsWidget } from './SreMetricsWidget';
 
 export function SystemArchitecture() {
   const [activeSection, setActiveSection] = useState<'architecture' | 'engineering' | 'developer'>('architecture');
@@ -314,6 +315,9 @@ export function SystemArchitecture() {
               <p className="text-xs text-zinc-400 mt-1">Exponential backoff retry with AbortController timeouts.</p>
             </div>
           </div>
+
+          {/* Live SRE Metrics Widget */}
+          <SreMetricsWidget />
         </div>
       )}
 

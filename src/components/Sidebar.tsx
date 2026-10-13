@@ -17,7 +17,9 @@ import {
   GitBranch, 
   Eye, 
   Layers,
-  X
+  X,
+  KeyRound,
+  Wifi
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { fetchJson } from '../lib/api';
@@ -31,7 +33,10 @@ interface SidebarProps {
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'wifimap', label: 'Home Wi-Fi & Users Map', icon: Wifi },
   { id: 'godseye', label: "God's Eye", icon: Eye },
+  { id: 'apivault', label: 'Free API Vault', icon: KeyRound },
+  { id: 'neighborhood', label: 'Network Neighborhood', icon: NetworkIcon },
   { id: 'map', label: 'Live Map', icon: Globe },
   { id: 'network', label: 'Network Analysis', icon: NetworkIcon },
   { id: 'tracking', label: 'Central Tracking', icon: Radio },

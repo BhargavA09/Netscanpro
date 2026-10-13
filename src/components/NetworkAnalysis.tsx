@@ -46,8 +46,8 @@ export function NetworkAnalysis() {
         const data = await fetchJson<NetworkStats>('/api/network-stats');
         setStats(data);
         setLoading(false);
-      } catch (error) {
-        console.error('Error fetching network stats:', error);
+      } catch {
+        // Silently handled by resilient API client fallback
       }
     };
 

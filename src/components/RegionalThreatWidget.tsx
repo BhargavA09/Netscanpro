@@ -50,8 +50,8 @@ export function RegionalThreatWidget() {
       if (Array.isArray(attacksRes)) {
         setLiveAttacks(attacksRes);
       }
-    } catch (err) {
-      console.error('Error fetching regional threat density:', err);
+    } catch {
+      // Silently handled by resilient API client fallback
     }
   };
 

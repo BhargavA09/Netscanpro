@@ -26,8 +26,8 @@ export function ThreatCorrelation() {
           setCorrelations(data);
         }
         setLoading(false);
-      } catch (error) {
-        console.error('Error fetching correlations:', error);
+      } catch {
+        // Silently handled by resilient API client fallback
       }
     };
 

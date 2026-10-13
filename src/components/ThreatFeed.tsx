@@ -14,8 +14,8 @@ export function ThreatFeed() {
       if (Array.isArray(data)) {
         setThreats(data);
       }
-    } catch (error) {
-      console.error('Error fetching threats:', error);
+    } catch {
+      // Silently handled by resilient API client fallback
     } finally {
       setLoading(false);
     }

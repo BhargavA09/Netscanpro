@@ -16,6 +16,9 @@ import { CentralNetworkTracking } from './components/CentralNetworkTracking';
 import { SystemArchitecture } from './components/SystemArchitecture';
 import { GodsEyeTracking } from './components/GodsEyeTracking';
 import { GlobalSearch } from './components/GlobalSearch';
+import { ApiVault } from './components/ApiVault';
+import { NetworkNeighborhood } from './components/NetworkNeighborhood';
+import { HomeWifiMap } from './components/HomeWifiMap';
 import { fetchJson } from './lib/api';
 import { Bell, Menu, User, Terminal, ShieldAlert, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -47,8 +50,14 @@ export default function App() {
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard />;
+      case 'wifimap':
+        return <HomeWifiMap />;
       case 'godseye':
         return <GodsEyeTracking />;
+      case 'apivault':
+        return <ApiVault />;
+      case 'neighborhood':
+        return <NetworkNeighborhood />;
       case 'map':
         return <LiveAttackMap />;
       case 'network':
@@ -197,11 +206,16 @@ export default function App() {
           <div className="max-w-7xl mx-auto">
             <div className="mb-6 sm:mb-8">
               <h2 className="text-2xl sm:text-3xl font-bold text-white capitalize tracking-tight">
-                {activeTab === 'godseye' ? "God's Eye Omnipresent Tracker" : activeTab.replace('-', ' ')}
+                {activeTab === 'godseye' ? "God's Eye Omnipresent Tracker" :
+                 activeTab === 'apivault' ? "Free Threat Intelligence API Vault" :
+                 activeTab === 'neighborhood' ? "Subnet Asset Mesh & Network Neighborhood" :
+                 activeTab.replace('-', ' ')}
               </h2>
               <p className="text-zinc-500 text-xs sm:text-sm mt-1">
                 {activeTab === 'dashboard' && 'Real-time overview of your security posture and threat landscape.'}
                 {activeTab === 'godseye' && 'God\'s Eye omnipresent surveillance: 360-degree radar sweep correlating orbital attacks, wire packets, DNS hops, and Fourier spectral authenticity across all sensors.'}
+                {activeTab === 'apivault' && 'Zero-cost Threat Intelligence API Vault: browse, test, and execute queries across free public OSINT endpoints (Shodan InternetDB, URLhaus, ThreatFox, CISA KEV, CIRCL CVE).'}
+                {activeTab === 'neighborhood' && 'Network Neighborhood: see everyone and every asset within your local network, inspect host telemetry, users, open ports, and cross-reference with the Free API Vault.'}
                 {activeTab === 'map' && 'Live visualization of global cyber attacks and OSINT threat streams.'}
                 {activeTab === 'network' && 'Real-time telemetry of network bandwidth, protocol distribution, and topology.'}
                 {activeTab === 'tracking' && 'Central network tracking: real-time browser DNS resolution hop tracing, deep packet inspection (DPI), Fourier spectral filters, and God\'s Eye HUD.'}

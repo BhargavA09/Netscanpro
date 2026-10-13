@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Shield, AlertTriangle, CheckCircle, Info, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { Search, Shield, AlertTriangle, CheckCircle, Info, RefreshCw, Wifi, WifiOff, KeyRound, ArrowRight } from 'lucide-react';
 import { IoC } from '../types';
 import { cn } from '../lib/utils';
 import { fetchJson } from '../lib/api';
@@ -21,8 +21,7 @@ export function IoCLookup() {
         setLastUpdated(new Date());
         setIsOnline(true);
       }
-    } catch (error) {
-      console.error('Error fetching IoCs:', error);
+    } catch {
       setIsOnline(false);
     } finally {
       setLoading(false);
@@ -152,9 +151,18 @@ export function IoCLookup() {
               ))}
             </div>
           ) : (
-            <div className="bg-card border border-border p-12 rounded-xl text-center">
-              <Shield className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
-              <p className="text-zinc-500">No malicious indicators found for this query.</p>
+            <div className="bg-card border border-border p-12 rounded-xl text-center space-y-4">
+              <Shield className="w-12 h-12 text-zinc-700 mx-auto" />
+              <div>
+                <p className="text-zinc-300 font-bold text-sm">No internal indicators found for "{query}"</p>
+                <p className="text-zinc-500 text-xs mt-1">Indicator is not present in local database.</p>
+              </div>
+              <div className="pt-2">
+                <div className="inline-flex items-center gap-2 p-3 rounded-lg bg-black/40 border border-border text-xs font-mono text-zinc-300">
+                  <KeyRound className="w-4 h-4 text-accent shrink-0" />
+                  <span>Verify with live public feeds (Shodan, URLhaus, AbuseIPDB) in the <strong>Free API Vault</strong></span>
+                </div>
+              </div>
             </div>
           )}
         </div>

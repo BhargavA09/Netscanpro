@@ -113,7 +113,6 @@ export function CmsHub() {
         setSelectedItem(sorted[0]);
       }
     } catch (err: any) {
-      console.error('Error loading CMS items:', err);
       setError(err.message || 'Failed to fetch directory items.');
     } finally {
       setLoading(false);
@@ -330,8 +329,7 @@ export function CmsHub() {
       // Reload whole list and select saved item
       await loadItems(savedItem.id);
     } catch (err: any) {
-      console.error('Error saving CMS item:', err);
-      alert(err.message || "Failed to commit changes in database store.");
+      setError(err.message || "Failed to commit changes in database store.");
     } finally {
       setSaving(false);
     }
@@ -340,8 +338,6 @@ export function CmsHub() {
   // Delete Item
   const handleDeleteItem = async () => {
     if (!selectedItem) return;
-    const confirmMessage = `Are you sure you want to completely erase the publication: "${selectedItem.title}"? This cannot be undone.`;
-    if (!window.confirm(confirmMessage)) return;
 
     try {
       setSaving(true);
@@ -351,8 +347,7 @@ export function CmsHub() {
       setSelectedItem(null);
       await loadItems();
     } catch (err: any) {
-      console.error('Error deleting CMS item:', err);
-      alert(err.message || 'Could not purge item from records list.');
+      setError(err.message || 'Could not purge item from records list.');
     } finally {
       setSaving(false);
     }

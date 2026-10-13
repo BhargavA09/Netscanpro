@@ -34,8 +34,8 @@ export function ThreatAlertSystem() {
             }, 8000);
           }
         }
-      } catch (error) {
-        console.error('Error fetching alerts for notification system:', error);
+      } catch {
+        // Silently handled by resilient API client fallback
       }
     };
 

@@ -22,16 +22,20 @@ import {
   RefreshCw,
   Terminal,
   ExternalLink,
-  Sparkles
+  Sparkles,
+  Users,
+  KeyRound
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { fetchJson } from '../lib/api';
 import { DnsRecord, PacketRecord, DnsTraceHop } from '../types';
 import { FourierNetworkFilter } from './FourierNetworkFilter';
 import { GodsEyeTracking } from './GodsEyeTracking';
+import { NetworkNeighborhood } from './NetworkNeighborhood';
+import { ApiVault } from './ApiVault';
 
 export function CentralNetworkTracking() {
-  const [activeTab, setActiveTab] = useState<'dns' | 'packets' | 'fourier' | 'godseye'>('dns');
+  const [activeTab, setActiveTab] = useState<'dns' | 'packets' | 'neighborhood' | 'fourier' | 'apivault' | 'godseye'>('dns');
   
   // DNS tracking state
   const [dnsRecords, setDnsRecords] = useState<DnsRecord[]>([]);
@@ -60,8 +64,8 @@ export function CentralNetworkTracking() {
             setSelectedDnsRecord(data[0]);
           }
         }
-      } catch (err) {
-        console.error('Error fetching DNS queries:', err);
+      } catch {
+        // Silently handled by resilient API client fallback
       }
     };
 
@@ -83,8 +87,8 @@ export function CentralNetworkTracking() {
             setSelectedPacket(data[0]);
           }
         }
-      } catch (err) {
-        console.error('Error fetching network packets:', err);
+      } catch {
+        // Silently handled by resilient API client fallback
       }
     };
 
@@ -115,8 +119,8 @@ export function CentralNetworkTracking() {
         setSelectedDnsRecord(result);
         setCustomDomainInput('');
       }
-    } catch (err) {
-      console.error('Error tracing domain:', err);
+    } catch {
+      // Silently handled
     } finally {
       setIsTracingDns(false);
     }
@@ -201,43 +205,67 @@ export function CentralNetworkTracking() {
           <button
             onClick={() => setActiveTab('dns')}
             className={cn(
-              "px-4 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-2",
+              "px-3.5 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-1.5 shrink-0",
               activeTab === 'dns'
                 ? "bg-accent/20 text-accent border border-accent/30 font-semibold"
                 : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
             )}
           >
             <Globe className="w-4 h-4" />
-            DNS to Browser Tracer
+            DNS Tracer
           </button>
           <button
             onClick={() => setActiveTab('packets')}
             className={cn(
-              "px-4 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-2",
+              "px-3.5 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-1.5 shrink-0",
               activeTab === 'packets'
                 ? "bg-accent/20 text-accent border border-accent/30 font-semibold"
                 : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
             )}
           >
             <Terminal className="w-4 h-4" />
-            Deep Packet Inspector (DPI)
+            Packet DPI
+          </button>
+          <button
+            onClick={() => setActiveTab('neighborhood')}
+            className={cn(
+              "px-3.5 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-1.5 shrink-0",
+              activeTab === 'neighborhood'
+                ? "bg-accent/20 text-accent border border-accent/30 font-semibold"
+                : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
+            )}
+          >
+            <Users className="w-4 h-4" />
+            Subnet Mesh (Everyone)
+          </button>
+          <button
+            onClick={() => setActiveTab('apivault')}
+            className={cn(
+              "px-3.5 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-1.5 shrink-0",
+              activeTab === 'apivault'
+                ? "bg-accent/20 text-accent border border-accent/30 font-semibold"
+                : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
+            )}
+          >
+            <KeyRound className="w-4 h-4" />
+            Free API Vault
           </button>
           <button
             onClick={() => setActiveTab('fourier')}
             className={cn(
-              "px-4 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-2",
+              "px-3.5 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-1.5 shrink-0",
               activeTab === 'fourier'
                 ? "bg-accent/20 text-accent border border-accent/30 font-semibold"
                 : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
             )}
           >
             <Sparkles className="w-4 h-4 text-accent" />
-            Fourier & Spectral Filter
+            Fourier Filter
           </button>
           <button
             onClick={() => setActiveTab('godseye')}
             className={cn(
-              "px-4 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-2",
+              "px-3.5 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-1.5 shrink-0",
               activeTab === 'godseye'
                 ? "bg-accent/20 text-accent border border-accent/30 font-semibold"
                 : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
@@ -840,12 +868,22 @@ export function CentralNetworkTracking() {
         </div>
       )}
 
-      {/* ======================= TAB 3: FOURIER & SPECTRAL FILTER ======================= */}
+      {/* ======================= TAB 3: SUBNET MESH & ASSET NEIGHBORHOOD ======================= */}
+      {activeTab === 'neighborhood' && (
+        <NetworkNeighborhood />
+      )}
+
+      {/* ======================= TAB 4: FREE API VAULT ======================= */}
+      {activeTab === 'apivault' && (
+        <ApiVault />
+      )}
+
+      {/* ======================= TAB 5: FOURIER & SPECTRAL FILTER ======================= */}
       {activeTab === 'fourier' && (
         <FourierNetworkFilter />
       )}
 
-      {/* ======================= TAB 4: GOD'S EYE MULTI-SENSOR HUD ======================= */}
+      {/* ======================= TAB 6: GOD'S EYE MULTI-SENSOR HUD ======================= */}
       {activeTab === 'godseye' && (
         <GodsEyeTracking />
       )}

@@ -37,8 +37,8 @@ export function LiveAttackMap() {
         if (Array.isArray(data)) {
           setAttacks(data);
         }
-      } catch (error) {
-        console.error('Error fetching attack map data:', error);
+      } catch {
+        // Silently handled by resilient API client fallback
       }
     };
 

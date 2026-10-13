@@ -11,7 +11,9 @@ import {
   CornerDownLeft, 
   SlidersHorizontal,
   Command,
-  Tag
+  Tag,
+  KeyRound,
+  Laptop
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { fetchJson } from '../lib/api';
@@ -23,7 +25,7 @@ interface GlobalSearchProps {
 
 interface SearchItem {
   id: string;
-  category: 'actor' | 'ioc' | 'article' | 'dns' | 'threat';
+  category: 'actor' | 'ioc' | 'article' | 'dns' | 'threat' | 'vault' | 'device';
   title: string;
   subtitle: string;
   meta: string;
@@ -121,7 +123,13 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
       'dns:': 'dns',
       'type:threat': 'threat',
       'type:alert': 'threat',
-      'threat:': 'threat'
+      'threat:': 'threat',
+      'type:vault': 'vault',
+      'vault:': 'vault',
+      'type:api': 'vault',
+      'type:device': 'device',
+      'device:': 'device',
+      'type:network': 'device'
     };
 
     for (const [prefix, cat] of Object.entries(prefixMap)) {
@@ -202,6 +210,51 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
       });
     });
 
+    // Free API Vault Items
+    const defaultVaultApis = [
+      { id: 'shodan_internetdb', name: 'Shodan InternetDB', desc: 'Keyless IP lookup, open ports, hostnames, CVEs' },
+      { id: 'urlhaus_abuse_ch', name: 'URLhaus Malware URLs', desc: 'Public malware payload distribution URLs' },
+      { id: 'threatfox_abuse_ch', name: 'ThreatFox IOC Exchange', desc: 'Botnet & Cobalt Strike indicators of compromise' },
+      { id: 'cisa_kev', name: 'CISA Known Exploited Vulns (KEV)', desc: 'Actively exploited CVE catalog' },
+      { id: 'circl_cve', name: 'CIRCL CVE Search', desc: 'CVSS scores, zero-day CVE advisory database' },
+      { id: 'feodo_tracker', name: 'Feodo Tracker Botnet C2', desc: 'Active botnet C2 IP blocklist' },
+      { id: 'abuseipdb', name: 'AbuseIPDB Verification', desc: 'IP reputation & brute-force abuse confidence' }
+    ];
+
+    defaultVaultApis.forEach(v => {
+      allItems.push({
+        id: v.id,
+        category: 'vault',
+        title: `${v.name} (Free API Vault)`,
+        subtitle: v.desc,
+        meta: 'FREE API VAULT · Zero Cost OSINT',
+        tab: 'apivault',
+        tags: ['vault', 'api', 'free', 'osint']
+      });
+    });
+
+    // Network Neighborhood Subnet Assets ("Everyone in network")
+    const subnetNodes = [
+      { id: 'bhargav-workstation', name: 'Bhargav (Lead Architect & Developer)', ip: '192.168.1.100', role: 'Lead Systems Architect', status: 'Online' },
+      { id: 'sarah-chen', name: 'Sarah Chen (Senior SOC Analyst)', ip: '192.168.1.105', role: 'Threat Hunter', status: 'Online' },
+      { id: 'michael-rodriguez', name: 'Michael Rodriguez (Forensics)', ip: '192.168.1.135', role: 'Digital Forensics', status: 'Online' },
+      { id: 'gateway-udm', name: 'UniFi Dream Machine Pro Gateway', ip: '192.168.1.1', role: 'Core Subnet Gateway', status: 'Online' },
+      { id: 'dns-pihole', name: 'Pi-hole DNS Sinkhole Daemon', ip: '192.168.1.112', role: 'Recursive DNS', status: 'Online' },
+      { id: 'rogue-camera', name: 'Unregistered Cam WiFi (Rogue Device)', ip: '192.168.1.189', role: 'Flagged IoT Node', status: 'Suspicious' }
+    ];
+
+    subnetNodes.forEach(node => {
+      allItems.push({
+        id: node.id,
+        category: 'device',
+        title: `${node.name} (${node.ip})`,
+        subtitle: `Subnet Node · ${node.role} · Status: ${node.status}`,
+        meta: 'NETWORK NEIGHBORHOOD · Subnet Mesh',
+        tab: 'neighborhood',
+        tags: ['device', 'mesh', 'network', 'neighborhood', 'subnet', node.ip]
+      });
+    });
+
     // Apply category filter if specified
     let filtered = allItems;
     if (categoryFilter) {
@@ -247,6 +300,8 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
       case 'article': return <FileText className="w-3.5 h-3.5 text-accent" />;
       case 'dns': return <Globe className="w-3.5 h-3.5 text-blue-400" />;
       case 'threat': return <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />;
+      case 'vault': return <KeyRound className="w-3.5 h-3.5 text-emerald-400" />;
+      case 'device': return <Laptop className="w-3.5 h-3.5 text-sky-400" />;
       default: return <Tag className="w-3.5 h-3.5 text-zinc-400" />;
     }
   };
@@ -358,6 +413,24 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
               )}
             >
               type:threat
+            </button>
+            <button
+              onClick={() => applyCategoryFilter('vault')}
+              className={cn(
+                "px-2 py-0.5 rounded transition-colors text-[10px]",
+                categoryFilter === 'vault' ? "bg-emerald-500/20 text-emerald-400 font-semibold" : "text-zinc-400 hover:text-white"
+              )}
+            >
+              type:vault
+            </button>
+            <button
+              onClick={() => applyCategoryFilter('device')}
+              className={cn(
+                "px-2 py-0.5 rounded transition-colors text-[10px]",
+                categoryFilter === 'device' ? "bg-sky-500/20 text-sky-400 font-semibold" : "text-zinc-400 hover:text-white"
+              )}
+            >
+              type:device
             </button>
           </div>
 
