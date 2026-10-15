@@ -29,7 +29,8 @@ import {
   Zap,
   TrendingDown,
   TrendingUp,
-  Percent
+  Percent,
+  Wrench
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { fetchJson } from '../lib/api';
@@ -94,7 +95,7 @@ export function SreMetricsWidget({ className, isCompact = false }: SreMetricsWid
         method: 'POST'
       });
       if (res && res.success) {
-        setActionFeedback('Cluster auto-healed. Latency normalized and error budget restored.');
+        setActionFeedback('✓ Cluster auto-healed. All degraded services restored, latency normalized and error budget optimal.');
         fetchMetrics();
         setTimeout(() => setActionFeedback(null), 5000);
       }
@@ -102,6 +103,21 @@ export function SreMetricsWidget({ className, isCompact = false }: SreMetricsWid
       // Handled
     } finally {
       setIsHealing(false);
+    }
+  };
+
+  const handleHealSingleService = async (serviceId: string) => {
+    try {
+      const res = await fetchJson<{ success: boolean; message: string }>(`/api/sre/services/${serviceId}/heal`, {
+        method: 'POST'
+      });
+      if (res && res.success) {
+        setActionFeedback(`✓ Healed service ${serviceId}: Restored optimal status, zeroed error rate.`);
+        fetchMetrics();
+        setTimeout(() => setActionFeedback(null), 5000);
+      }
+    } catch {
+      // Handled
     }
   };
 
@@ -595,6 +611,23 @@ export function SreMetricsWidget({ className, isCompact = false }: SreMetricsWid
         {/* Microservice Infrastructure Health Table */}
         {!isCompact && (
           <div className="pt-4 border-t border-border space-y-3">
+            {/* Degraded Alert Banner if any errors detected */}
+            {data?.services?.some(s => s.status !== 'healthy') && (
+              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
+                <div className="flex items-center gap-2 text-amber-300 font-bold">
+                  <AlertCircle className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
+                  <span>Degraded Infrastructure Detected: High latency & error budget breach on active services</span>
+                </div>
+                <button
+                  onClick={handleHeal}
+                  className="px-3 py-1.5 rounded-lg bg-amber-500/25 hover:bg-amber-500/40 text-amber-200 border border-amber-500/50 font-bold text-xs transition cursor-pointer flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-sm"
+                >
+                  <Wrench className="w-3.5 h-3.5" />
+                  <span>Solve All Service Errors</span>
+                </button>
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <h4 className="text-white font-medium text-xs uppercase tracking-wider font-mono flex items-center gap-2">
                 <Server className="w-3.5 h-3.5 text-accent" />
@@ -616,6 +649,7 @@ export function SreMetricsWidget({ className, isCompact = false }: SreMetricsWid
                     <th className="py-2.5 px-3 text-right">Latency</th>
                     <th className="py-2.5 px-3 text-right">Error Rate</th>
                     <th className="py-2.5 px-3 text-right">CPU / RAM</th>
+                    <th className="py-2.5 px-3 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
@@ -663,6 +697,23 @@ export function SreMetricsWidget({ className, isCompact = false }: SreMetricsWid
                       </td>
                       <td className="py-2.5 px-3 text-right text-zinc-400 text-[11px]">
                         {svc.cpuUsagePercent}% / {svc.memoryUsagePercent}%
+                      </td>
+                      <td className="py-2.5 px-3 text-right">
+                        {svc.status !== 'healthy' ? (
+                          <button
+                            onClick={() => handleHealSingleService(svc.id)}
+                            className="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/35 text-amber-300 border border-amber-500/40 text-[10px] font-bold transition flex items-center gap-1 ml-auto cursor-pointer shadow-sm"
+                            title={`Solve error and heal ${svc.name}`}
+                          >
+                            <Wrench className="w-3 h-3 text-amber-400" />
+                            <span>Solve Error</span>
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1 justify-end">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            Optimal
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}

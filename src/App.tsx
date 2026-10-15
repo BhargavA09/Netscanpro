@@ -49,7 +49,7 @@ export default function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard onNavigate={setActiveTab} />;
       case 'wifimap':
         return <HomeWifiMap />;
       case 'godseye':

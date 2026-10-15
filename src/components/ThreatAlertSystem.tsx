@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldAlert, X, AlertCircle, Zap, Terminal } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -14,7 +14,7 @@ interface Alert {
 
 export function ThreatAlertSystem() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [lastAlertId, setLastAlertId] = useState<string | null>(null);
+  const seenAlertIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchAlerts = async () => {
@@ -23,10 +23,10 @@ export function ThreatAlertSystem() {
         
         if (Array.isArray(data) && data.length > 0) {
           const latest = data[0];
-          // Only show if it's a new alert and it's Critical or High
-          if (latest.id !== lastAlertId && (latest.severity === 'Critical' || latest.severity === 'High')) {
-            setAlerts(prev => [latest, ...prev].slice(0, 3));
-            setLastAlertId(latest.id);
+          // Only show if it's a new alert, Critical or High, and hasn't been displayed yet
+          if (latest && latest.id && !seenAlertIds.current.has(latest.id) && (latest.severity === 'Critical' || latest.severity === 'High')) {
+            seenAlertIds.current.add(latest.id);
+            setAlerts(prev => [latest, ...prev.filter(a => a.id !== latest.id)].slice(0, 3));
             
             // Auto-remove after 8 seconds
             setTimeout(() => {
@@ -39,9 +39,10 @@ export function ThreatAlertSystem() {
       }
     };
 
+    fetchAlerts();
     const interval = setInterval(fetchAlerts, 3000);
     return () => clearInterval(interval);
-  }, [lastAlertId]);
+  }, []);
 
   const removeAlert = (id: string) => {
     setAlerts(prev => prev.filter(a => a.id !== id));

@@ -402,11 +402,11 @@ export function CentralNetworkTracking() {
 
               {/* Records Scroll List */}
               <div className="flex-1 overflow-y-auto divide-y divide-border">
-                {filteredDnsRecords.map((record) => {
+                {filteredDnsRecords.map((record, index) => {
                   const isSelected = selectedDnsRecord?.id === record.id;
                   return (
                     <div
-                      key={record.id}
+                      key={`dns-${record.id}-${index}`}
                       onClick={() => setSelectedDnsRecord(record)}
                       className={cn(
                         "p-3.5 transition-colors cursor-pointer text-left",
@@ -526,8 +526,8 @@ export function CentralNetworkTracking() {
                     <div className="mt-3 bg-white/5 p-3 rounded text-xs font-mono flex flex-wrap items-center gap-2">
                       <span className="text-zinc-500">Resolved Endpoint(s):</span>
                       {selectedDnsRecord.resolvedIps && selectedDnsRecord.resolvedIps.length > 0 ? (
-                        selectedDnsRecord.resolvedIps.map(ip => (
-                          <span key={ip} className="bg-white/10 text-accent px-2 py-0.5 rounded font-bold">
+                        selectedDnsRecord.resolvedIps.map((ip, index) => (
+                          <span key={`ip-${ip}-${index}`} className="bg-white/10 text-accent px-2 py-0.5 rounded font-bold">
                             {ip}
                           </span>
                         ))
@@ -546,7 +546,7 @@ export function CentralNetworkTracking() {
 
                     <div className="space-y-3 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-border">
                       {selectedDnsRecord.hops.map((hop, index) => (
-                        <div key={hop.hopNumber} className="relative flex items-start gap-3.5 group">
+                        <div key={`hop-${hop.hopNumber}-${index}`} className="relative flex items-start gap-3.5 group">
                           {/* Hop Number Indicator */}
                           <div className={cn(
                             "w-7 h-7 rounded-full flex items-center justify-center text-xs font-mono font-bold shrink-0 z-10",
@@ -685,11 +685,11 @@ export function CentralNetworkTracking() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
-                    {filteredPackets.map((pkt) => {
+                    {filteredPackets.map((pkt, index) => {
                       const isSelected = selectedPacket?.frameNumber === pkt.frameNumber;
                       return (
                         <tr
-                          key={pkt.frameNumber}
+                          key={`pkt-${pkt.frameNumber}-${index}`}
                           onClick={() => setSelectedPacket(pkt)}
                           className={cn(
                             "cursor-pointer transition-colors",

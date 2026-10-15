@@ -444,6 +444,12 @@ export interface WifiClientUser {
   qosPriority: 'High (Gaming/VoIP)' | 'Normal' | 'Streaming' | 'Background';
   roamingHistory: WifiClientRoamingEvent[];
   lastActivity: string;
+  isMyDevice?: boolean;
+  detectedViaBrowser?: boolean;
+  detectedOs?: string;
+  detectedBrowser?: string;
+  screenRes?: string;
+  rttLatencyMs?: number;
 }
 
 export interface OpenSourceRepo {
@@ -523,6 +529,89 @@ export interface PythonBackendStatus {
   scriptPath: string;
   recentLogs: string[];
 }
+
+export interface NmapPortInfo {
+  port: number;
+  protocol: 'tcp' | 'udp';
+  state: 'open' | 'filtered' | 'closed';
+  service: string;
+  version?: string;
+  banner?: string;
+}
+
+export interface NetworkDiscoveryDevice {
+  id: string;
+  ip: string;
+  mac: string;
+  vendor: string;
+  hostname: string;
+  userOwner?: string;
+  userRole?: string;
+  status: 'online' | 'idle' | 'warning' | 'high_traffic';
+  isMyDevice?: boolean;
+  osFingerprint: string;
+  deviceType: 'laptop' | 'smartphone' | 'tablet' | 'smart_tv' | 'gaming_console' | 'iot_camera' | 'smart_home' | 'ev_charger' | 'server' | 'networking';
+  
+  // Arping & Layer 2/3 Telemetry
+  latencyMs: number;
+  jitterMs: number;
+  packetLossPercent: number;
+  lastArpReplyTime: string;
+  interfaceName: string;
+  
+  // Wi-Fi Mesh Node Link & Placement
+  connectedNodeId: string;
+  connectedNodeName: string;
+  nodeRoom: string;
+  nodeFloor: string;
+  bssid: string;
+  band: '2.4GHz' | '5GHz' | '6GHz';
+  channel: number;
+  channelWidth: string;
+  rssiDbm: number;
+  snrDb: number;
+  signalQuality: 'Excellent' | 'Good' | 'Fair' | 'Weak';
+  
+  // Throughput & Traffic
+  rxRateMbps: number;
+  txRateMbps: number;
+  currentDownMbps: number;
+  currentUpMbps: number;
+  dataTransferred24hGb: number;
+  
+  // Network Config & DNS
+  subnet: string;
+  dhcpLeaseRemaining: string;
+  dnsResolver: string;
+  vlan: string;
+  dnsQueries24h: number;
+  blockedDns24h: number;
+  
+  // Nmap Port Scan Telemetry
+  openPorts: NmapPortInfo[];
+  lastNmapScanTime?: string;
+  scanEngine: 'arping' | 'nmap' | 'hybrid';
+}
+
+export interface NetworkDiscoveryScanResponse {
+  success: boolean;
+  subnet: string;
+  scanDurationMs: number;
+  scanEngine: string;
+  devicesFound: number;
+  activeHosts: number;
+  devices: NetworkDiscoveryDevice[];
+  summary: {
+    totalScannedIps: number;
+    activeCount: number;
+    openPortsTotal: number;
+    avgLatencyMs: number;
+    arpCacheHits: number;
+    meshAssociatedCount: number;
+  };
+  timestamp: string;
+}
+
 
 
 

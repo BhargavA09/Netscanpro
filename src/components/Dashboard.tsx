@@ -15,6 +15,7 @@ import { cn } from '../lib/utils';
 import { fetchJson } from '../lib/api';
 import { RegionalThreatWidget } from './RegionalThreatWidget';
 import { SreMetricsWidget } from './SreMetricsWidget';
+import { HomeWifiQuickWidget } from './HomeWifiQuickWidget';
 
 interface Alert {
   id: string;
@@ -42,7 +43,11 @@ const initialData = [
   { name: '23:59', attacks: 700 },
 ];
 
-export function Dashboard() {
+interface DashboardProps {
+  onNavigate?: (tab: string) => void;
+}
+
+export function Dashboard({ onNavigate }: DashboardProps = {}) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [liveStats, setLiveStats] = useState<LiveStats>({
     totalThreats: 12482,
@@ -141,6 +146,9 @@ export function Dashboard() {
       {/* SRE Infrastructure Health, Latency & Reliability Widget */}
       <SreMetricsWidget />
 
+      {/* Home Wi-Fi Mesh & Connected Device Quick Status Widget */}
+      <HomeWifiQuickWidget onNavigate={onNavigate} />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-card border border-border p-6 rounded-xl">
           <div className="flex items-center justify-between mb-6">
@@ -208,8 +216,8 @@ export function Dashboard() {
           </div>
           <div className="flex-1 divide-y divide-border">
             {alerts.length > 0 ? (
-              alerts.map((alert) => (
-                <div key={alert.id} className="p-4 hover:bg-white/5 transition-colors group cursor-pointer">
+              alerts.map((alert, index) => (
+                <div key={`${alert.id}-${index}`} className="p-4 hover:bg-white/5 transition-colors group cursor-pointer">
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">

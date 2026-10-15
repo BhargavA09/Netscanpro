@@ -44,8 +44,8 @@ export function ThreatFeed() {
       </div>
       
       <div className="divide-y divide-border">
-        {threats.map((threat) => (
-          <div key={threat.id} className="p-6 hover:bg-white/5 transition-colors group cursor-pointer">
+        {threats.map((threat, index) => (
+          <div key={`${threat.id}-${index}`} className="p-6 hover:bg-white/5 transition-colors group cursor-pointer">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1 flex-1">
                 <div className="flex items-center gap-3">

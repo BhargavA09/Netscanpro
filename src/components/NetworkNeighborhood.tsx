@@ -430,7 +430,7 @@ export function NetworkNeighborhood() {
 
               return (
                 <div
-                  key={node.id}
+                  key={`neighborhood-node-${node.id}-${i}`}
                   onClick={() => setSelectedDevice(node)}
                   style={{ transform: `translate(${x}px, ${y}px)` }}
                   className="absolute z-20 flex flex-col items-center cursor-pointer group"
@@ -471,7 +471,7 @@ export function NetworkNeighborhood() {
       {/* ======================================================== */}
       {viewMode === 'grid' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredDevices.map((dev) => {
+          {filteredDevices.map((dev, idx) => {
             const Icon = getDeviceIcon(dev.deviceType);
             const isUser = Boolean(dev.assignedUser?.isCurrentUser);
             const isFlagged = dev.status === 'flagged';
@@ -479,7 +479,7 @@ export function NetworkNeighborhood() {
 
             return (
               <div
-                key={dev.id}
+                key={`neighborhood-dev-card-${dev.id}-${idx}`}
                 className={cn(
                   "bg-card border rounded-xl p-5 flex flex-col justify-between transition-all duration-200 hover:border-zinc-500 relative overflow-hidden group",
                   isUser ? "border-accent/40 bg-accent/[0.02]" :
@@ -563,8 +563,8 @@ export function NetworkNeighborhood() {
                   <div className="flex items-center gap-1.5 flex-wrap mb-4">
                     <span className="text-[10px] font-mono text-zinc-500">Open Ports:</span>
                     {dev.openPorts.length > 0 ? (
-                      dev.openPorts.slice(0, 4).map(port => (
-                        <span key={port} className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-white/5 border border-white/10 text-zinc-300">
+                      dev.openPorts.slice(0, 4).map((port, pIdx) => (
+                        <span key={`nb-port-${port}-${pIdx}`} className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-white/5 border border-white/10 text-zinc-300">
                           {port}
                         </span>
                       ))
@@ -663,8 +663,8 @@ export function NetworkNeighborhood() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredDevices.map((dev) => (
-                <tr key={dev.id} className="hover:bg-white/5 transition-colors">
+              {filteredDevices.map((dev, idx) => (
+                <tr key={`nb-table-${dev.id}-${idx}`} className="hover:bg-white/5 transition-colors">
                   <td className="p-3 font-bold text-white">
                     <div className="flex items-center gap-2">
                       <span>{dev.assignedUser?.name || dev.hostname}</span>
