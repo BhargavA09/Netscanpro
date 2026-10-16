@@ -1,26 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
-import { ThreatFeed } from './components/ThreatFeed';
-import { ThreatAnalyzer } from './components/ThreatAnalyzer';
-import { IoCLookup } from './components/IoCLookup';
-import { SystemLogs } from './components/SystemLogs';
-import { LiveAttackMap } from './components/LiveAttackMap';
-import { ThreatCorrelation } from './components/ThreatCorrelation';
-import { NetworkAnalysis } from './components/NetworkAnalysis';
-import { ThreatAlertSystem } from './components/ThreatAlertSystem';
-import { ThreatActorProfiles } from './components/ThreatActorProfiles';
-import { Collaboration } from './components/Collaboration';
-import { CmsHub } from './components/CmsHub';
-import { CentralNetworkTracking } from './components/CentralNetworkTracking';
-import { SystemArchitecture } from './components/SystemArchitecture';
-import { GodsEyeTracking } from './components/GodsEyeTracking';
-import { GlobalSearch } from './components/GlobalSearch';
-import { ApiVault } from './components/ApiVault';
-import { NetworkNeighborhood } from './components/NetworkNeighborhood';
 import { HomeWifiMap } from './components/HomeWifiMap';
+import { NetworkAnalysis } from './components/NetworkAnalysis';
+import { CentralNetworkTracking } from './components/CentralNetworkTracking';
+import { NetworkNeighborhood } from './components/NetworkNeighborhood';
+import { SystemLogs } from './components/SystemLogs';
+import { ThreatAlertSystem } from './components/ThreatAlertSystem';
+import { GlobalSearch } from './components/GlobalSearch';
 import { fetchJson } from './lib/api';
-import { Bell, Menu, User, Terminal, ShieldAlert, Globe } from 'lucide-react';
+import { Bell, Menu, User, Terminal, ShieldAlert, Wifi } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 
@@ -52,43 +41,16 @@ export default function App() {
         return <Dashboard onNavigate={setActiveTab} />;
       case 'wifimap':
         return <HomeWifiMap />;
-      case 'godseye':
-        return <GodsEyeTracking />;
-      case 'apivault':
-        return <ApiVault />;
-      case 'neighborhood':
-        return <NetworkNeighborhood />;
-      case 'map':
-        return <LiveAttackMap />;
       case 'network':
         return <NetworkAnalysis />;
       case 'tracking':
         return <CentralNetworkTracking />;
-      case 'architecture':
-        return <SystemArchitecture />;
-      case 'correlation':
-        return <ThreatCorrelation />;
-      case 'feed':
-        return <ThreatFeed />;
-      case 'analyzer':
-        return <ThreatAnalyzer />;
-      case 'lookup':
-        return <IoCLookup />;
-      case 'actors':
-        return <ThreatActorProfiles />;
-      case 'collab':
-        return <Collaboration />;
-      case 'cms':
-        return <CmsHub />;
+      case 'neighborhood':
+        return <NetworkNeighborhood />;
       case 'activity':
         return <SystemLogs />;
       default:
-        return (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-zinc-500">
-            <Terminal className="w-12 h-12 mb-4 opacity-20" />
-            <p className="font-mono text-sm uppercase tracking-widest">Module Under Construction</p>
-          </div>
-        );
+        return <Dashboard onNavigate={setActiveTab} />;
     }
   };
 
@@ -205,29 +167,21 @@ export default function App() {
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 data-grid">
           <div className="max-w-7xl mx-auto">
             <div className="mb-6 sm:mb-8">
-              <h2 className="text-2xl sm:text-3xl font-bold text-white capitalize tracking-tight">
-                {activeTab === 'godseye' ? "God's Eye Omnipresent Tracker" :
-                 activeTab === 'apivault' ? "Free Threat Intelligence API Vault" :
-                 activeTab === 'neighborhood' ? "Subnet Asset Mesh & Network Neighborhood" :
-                 activeTab.replace('-', ' ')}
+              <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                {activeTab === 'dashboard' && 'Overview Dashboard'}
+                {activeTab === 'wifimap' && 'Home Wi-Fi Mesh & Floorplan Topology'}
+                {activeTab === 'network' && 'Device Discovery & Reconnaissance (ARPing + Nmap)'}
+                {activeTab === 'tracking' && 'Deep Packet Inspection (DPI) & Protocol Anomaly Telemetry'}
+                {activeTab === 'neighborhood' && 'Device & User Access Control'}
+                {activeTab === 'activity' && 'Network Event Logs & Universal System Audit'}
               </h2>
-              <p className="text-zinc-500 text-xs sm:text-sm mt-1">
-                {activeTab === 'dashboard' && 'Real-time overview of your security posture and threat landscape.'}
-                {activeTab === 'godseye' && 'God\'s Eye omnipresent surveillance: 360-degree radar sweep correlating orbital attacks, wire packets, DNS hops, and Fourier spectral authenticity across all sensors.'}
-                {activeTab === 'apivault' && 'Zero-cost Threat Intelligence API Vault: browse, test, and execute queries across free public OSINT endpoints (Shodan InternetDB, URLhaus, ThreatFox, CISA KEV, CIRCL CVE).'}
-                {activeTab === 'neighborhood' && 'Network Neighborhood: see everyone and every asset within your local network, inspect host telemetry, users, open ports, and cross-reference with the Free API Vault.'}
-                {activeTab === 'map' && 'Live visualization of global cyber attacks and OSINT threat streams.'}
-                {activeTab === 'network' && 'Real-time telemetry of network bandwidth, protocol distribution, and topology.'}
-                {activeTab === 'tracking' && 'Central network tracking: real-time browser DNS resolution hop tracing, deep packet inspection (DPI), Fourier spectral filters, and God\'s Eye HUD.'}
-                {activeTab === 'architecture' && 'Layered hexagonal software architecture, SRE reliability standards, and domain-driven design engineered by lead developer Bhargav.'}
-                {activeTab === 'correlation' && 'Advanced heuristic analysis linking disparate system logs to known threat indicators.'}
-                {activeTab === 'feed' && 'Chronological list of detected threats and security events.'}
-                {activeTab === 'analyzer' && 'Advanced AI-driven analysis of suspicious files and behavior.'}
-                {activeTab === 'lookup' && 'Query our global intelligence database for known malicious indicators.'}
-                {activeTab === 'actors' && 'Intelligence on known adversary groups and their operations.'}
-                {activeTab === 'collab' && 'Collaborative SOC incident reports, investigative playbooks, and secure chat with real-time sync and presence indicators.'}
-                {activeTab === 'cms' && 'Content Management System (CMS) for uploading, categorizing, and managing publication states of bulletins and infosec papers.'}
-                {activeTab === 'activity' && 'Real-time audit trails, kernel events, and application activity logs.'}
+              <p className="text-zinc-400 text-xs sm:text-sm mt-1">
+                {activeTab === 'dashboard' && 'Live residential mesh topology status, WAN uplink telemetry, connected stations count, and DPI anomaly overview.'}
+                {activeTab === 'wifimap' && 'Multi-band 2.4/5/6GHz access points, interactive floorplan placement, mesh backhauls, client roaming handoffs, and Cake SQM QoS.'}
+                {activeTab === 'network' && 'Hybrid Layer-2 ARPing and Layer-4 Nmap scanner: active host discovery, MAC vendor resolution, and open port profiling.'}
+                {activeTab === 'tracking' && 'Real-time wire packet frame dissector, DNS resolution hop-by-hop traceroute, and Fourier spectral anomaly analysis.'}
+                {activeTab === 'neighborhood' && 'Household user roles (Homeowner, Family, Smart Home IoT, Guests), device quarantine, VLAN isolation, and speed limits.'}
+                {activeTab === 'activity' && 'Universal system events: DAWN roaming steers, DHCP leases, Pi-hole DNS sinkholes, and OpenWrt nftables firewall drops.'}
               </p>
             </div>
 

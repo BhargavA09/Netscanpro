@@ -1115,8 +1115,8 @@ export function HomeWifiMap() {
 
                         {/* Radios bands indicators */}
                         <div className="flex flex-col gap-0.5 pl-1 border-l border-zinc-700/60">
-                          {node.radios.map(r => (
-                            <span key={r.band} className="text-[8px] font-mono leading-tight text-zinc-400">
+                          {node.radios.map((r, rIdx) => (
+                            <span key={`radio-band-${r.band}-${r.channel}-${rIdx}`} className="text-[8px] font-mono leading-tight text-zinc-400">
                               {r.band.replace('GHz', 'G')}
                             </span>
                           ))}
@@ -1312,9 +1312,9 @@ export function HomeWifiMap() {
                     </div>
 
                     <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
-                      {clients.filter(c => c.nodeId === selectedNode.id).map(client => (
+                      {clients.filter(c => c.nodeId === selectedNode.id).map((client, cIdx) => (
                         <div
-                          key={client.id}
+                          key={`node-client-${client.id}-${cIdx}`}
                           onClick={() => setSelectedClientId(client.id)}
                           className={cn(
                             "p-2 rounded-lg border cursor-pointer flex items-center justify-between transition",
@@ -1552,13 +1552,13 @@ export function HomeWifiMap() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
-                  {filteredClients.map(client => {
+                  {filteredClients.map((client, cIdx) => {
                     const node = nodes.find(n => n.id === client.nodeId);
                     const isUserSelf = client.isMyDevice || client.id === myDevice?.id;
 
                     return (
                       <tr 
-                        key={client.id}
+                        key={`client-table-row-${client.id}-${cIdx}`}
                         className={cn(
                           "hover:bg-white/5 transition",
                           isUserSelf && "bg-sky-500/10 hover:bg-sky-500/15 border-l-2 border-l-sky-400",
@@ -1769,9 +1769,9 @@ export function HomeWifiMap() {
 
             {/* Timeline Stream */}
             <div className="space-y-3">
-              {filteredHistory.map((item) => (
+              {filteredHistory.map((item, hIdx) => (
                 <div 
-                  key={item.id}
+                  key={`history-item-${item.id}-${hIdx}`}
                   className="p-4 rounded-xl bg-card border border-border hover:border-sky-500/30 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md"
                 >
                   <div className="flex items-start gap-3.5">
@@ -1939,8 +1939,8 @@ export function HomeWifiMap() {
             {/* Logs Table / List */}
             <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xl">
               <div className="divide-y divide-border/60">
-                {filteredEventLogs.map((log) => (
-                  <div key={log.id} className="p-3.5 hover:bg-white/5 transition flex items-start justify-between gap-4 text-xs font-mono">
+                {filteredEventLogs.map((log, lIdx) => (
+                  <div key={`event-log-${log.id}-${lIdx}`} className="p-3.5 hover:bg-white/5 transition flex items-start justify-between gap-4 text-xs font-mono">
                     <div className="flex items-start gap-3 min-w-0">
                       <span className={cn(
                         "px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 mt-0.5",
@@ -2157,8 +2157,8 @@ export function HomeWifiMap() {
                         Connected Stations ({nodeClients.length})
                       </span>
                       <div className="space-y-1 max-h-[140px] overflow-y-auto pr-1">
-                        {nodeClients.map(c => (
-                          <div key={c.id} className="p-1.5 rounded bg-white/5 flex items-center justify-between text-[11px]">
+                        {nodeClients.map((c, cIdx) => (
+                          <div key={`pod-station-${c.id}-${cIdx}`} className="p-1.5 rounded bg-white/5 flex items-center justify-between text-[11px]">
                             <span className="text-zinc-200 truncate">
                               {c.isMyDevice ? "★ (You) " : ""}{c.userName} ({c.deviceHost.split('-')[0]})
                             </span>
@@ -2193,7 +2193,7 @@ export function HomeWifiMap() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {repos.map((repo, i) => (
                 <div
-                  key={i}
+                  key={`oss-repo-${repo.name}-${i}`}
                   onClick={() => setActiveCliRepo(repo.name)}
                   className={cn(
                     "p-4 rounded-xl bg-card border transition cursor-pointer flex flex-col justify-between gap-3 shadow-md",

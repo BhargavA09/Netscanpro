@@ -30,12 +30,9 @@ import { cn } from '../lib/utils';
 import { fetchJson } from '../lib/api';
 import { DnsRecord, PacketRecord, DnsTraceHop } from '../types';
 import { FourierNetworkFilter } from './FourierNetworkFilter';
-import { GodsEyeTracking } from './GodsEyeTracking';
-import { NetworkNeighborhood } from './NetworkNeighborhood';
-import { ApiVault } from './ApiVault';
 
 export function CentralNetworkTracking() {
-  const [activeTab, setActiveTab] = useState<'dns' | 'packets' | 'neighborhood' | 'fourier' | 'apivault' | 'godseye'>('dns');
+  const [activeTab, setActiveTab] = useState<'packets' | 'dns' | 'fourier'>('packets');
   
   // DNS tracking state
   const [dnsRecords, setDnsRecords] = useState<DnsRecord[]>([]);
@@ -203,76 +200,40 @@ export function CentralNetworkTracking() {
       <div className="flex items-center justify-between border-b border-border pb-3">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setActiveTab('dns')}
-            className={cn(
-              "px-3.5 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-1.5 shrink-0",
-              activeTab === 'dns'
-                ? "bg-accent/20 text-accent border border-accent/30 font-semibold"
-                : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
-            )}
-          >
-            <Globe className="w-4 h-4" />
-            DNS Tracer
-          </button>
-          <button
             onClick={() => setActiveTab('packets')}
             className={cn(
-              "px-3.5 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-1.5 shrink-0",
+              "px-3.5 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-1.5 shrink-0 cursor-pointer",
               activeTab === 'packets'
                 ? "bg-accent/20 text-accent border border-accent/30 font-semibold"
                 : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
             )}
           >
             <Terminal className="w-4 h-4" />
-            Packet DPI
+            Packet DPI Stream
           </button>
           <button
-            onClick={() => setActiveTab('neighborhood')}
+            onClick={() => setActiveTab('dns')}
             className={cn(
-              "px-3.5 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-1.5 shrink-0",
-              activeTab === 'neighborhood'
+              "px-3.5 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-1.5 shrink-0 cursor-pointer",
+              activeTab === 'dns'
                 ? "bg-accent/20 text-accent border border-accent/30 font-semibold"
                 : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
             )}
           >
-            <Users className="w-4 h-4" />
-            Subnet Mesh (Everyone)
-          </button>
-          <button
-            onClick={() => setActiveTab('apivault')}
-            className={cn(
-              "px-3.5 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-1.5 shrink-0",
-              activeTab === 'apivault'
-                ? "bg-accent/20 text-accent border border-accent/30 font-semibold"
-                : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
-            )}
-          >
-            <KeyRound className="w-4 h-4" />
-            Free API Vault
+            <Globe className="w-4 h-4" />
+            DNS Resolution Tracer
           </button>
           <button
             onClick={() => setActiveTab('fourier')}
             className={cn(
-              "px-3.5 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-1.5 shrink-0",
+              "px-3.5 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-1.5 shrink-0 cursor-pointer",
               activeTab === 'fourier'
                 ? "bg-accent/20 text-accent border border-accent/30 font-semibold"
                 : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
             )}
           >
             <Sparkles className="w-4 h-4 text-accent" />
-            Fourier Filter
-          </button>
-          <button
-            onClick={() => setActiveTab('godseye')}
-            className={cn(
-              "px-3.5 py-2 text-xs font-mono rounded-lg transition-all flex items-center gap-1.5 shrink-0",
-              activeTab === 'godseye'
-                ? "bg-accent/20 text-accent border border-accent/30 font-semibold"
-                : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
-            )}
-          >
-            <Eye className="w-4 h-4 text-accent" />
-            God's Eye HUD
+            Protocol Anomaly (Fourier)
           </button>
         </div>
 
@@ -868,24 +829,9 @@ export function CentralNetworkTracking() {
         </div>
       )}
 
-      {/* ======================= TAB 3: SUBNET MESH & ASSET NEIGHBORHOOD ======================= */}
-      {activeTab === 'neighborhood' && (
-        <NetworkNeighborhood />
-      )}
-
-      {/* ======================= TAB 4: FREE API VAULT ======================= */}
-      {activeTab === 'apivault' && (
-        <ApiVault />
-      )}
-
-      {/* ======================= TAB 5: FOURIER & SPECTRAL FILTER ======================= */}
+      {/* ======================= TAB 3: FOURIER & SPECTRAL ANOMALY FILTER ======================= */}
       {activeTab === 'fourier' && (
         <FourierNetworkFilter />
-      )}
-
-      {/* ======================= TAB 6: GOD'S EYE MULTI-SENSOR HUD ======================= */}
-      {activeTab === 'godseye' && (
-        <GodsEyeTracking />
       )}
     </div>
   );

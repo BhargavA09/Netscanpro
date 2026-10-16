@@ -1,25 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
-  ShieldAlert, 
-  Search, 
-  Zap, 
-  Settings, 
-  LogOut, 
-  Activity, 
-  Globe, 
-  Link as LinkIcon, 
-  Network as NetworkIcon, 
-  Users, 
-  Users2, 
-  FolderOpen, 
+  Wifi, 
+  Radar, 
   Radio, 
-  GitBranch, 
-  Eye, 
-  Layers,
+  Users, 
+  Activity,
   X,
-  KeyRound,
-  Wifi
+  Server
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { fetchJson } from '../lib/api';
@@ -32,23 +20,12 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'wifimap', label: 'Home Wi-Fi & Users Map', icon: Wifi },
-  { id: 'godseye', label: "God's Eye", icon: Eye },
-  { id: 'apivault', label: 'Free API Vault', icon: KeyRound },
-  { id: 'neighborhood', label: 'Network Neighborhood', icon: NetworkIcon },
-  { id: 'map', label: 'Live Map', icon: Globe },
-  { id: 'network', label: 'Network Analysis', icon: NetworkIcon },
-  { id: 'tracking', label: 'Central Tracking', icon: Radio },
-  { id: 'architecture', label: 'Architecture', icon: Layers },
-  { id: 'feed', label: 'Threat Feed', icon: ShieldAlert },
-  { id: 'correlation', label: 'Threat Correlation', icon: LinkIcon },
-  { id: 'lookup', label: 'IoC Lookup', icon: Search },
-  { id: 'actors', label: 'Threat Actors', icon: Users },
-  { id: 'collab', label: 'SOC Collab', icon: Users2 },
-  { id: 'cms', label: 'Intelligence CMS', icon: FolderOpen },
-  { id: 'analyzer', label: 'AI Analyzer', icon: Zap },
-  { id: 'activity', label: 'System Logs', icon: Activity },
+  { id: 'dashboard', label: 'Overview Dashboard', icon: LayoutDashboard },
+  { id: 'wifimap', label: 'Wi-Fi Mesh & Floorplan', icon: Wifi },
+  { id: 'network', label: 'Device Discovery & Recon', icon: Radar },
+  { id: 'tracking', label: 'Deep Packet Inspection (DPI)', icon: Radio },
+  { id: 'neighborhood', label: 'Device & User Access', icon: Users },
+  { id: 'activity', label: 'Network & System Logs', icon: Activity },
 ];
 
 export function Sidebar({ activeTab, setActiveTab, mobileOpen = false, onMobileClose }: SidebarProps) {
@@ -79,13 +56,13 @@ export function Sidebar({ activeTab, setActiveTab, mobileOpen = false, onMobileC
     <div className="w-64 h-full bg-card border-r border-border flex flex-col shrink-0">
       <div className="p-5 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-accent/20 rounded flex items-center justify-center">
-            <ShieldAlert className="w-5 h-5 text-accent" />
+          <div className="w-8 h-8 bg-sky-500/20 border border-sky-500/40 rounded flex items-center justify-center text-sky-400">
+            <Wifi className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-white leading-tight">SENTINEL</h1>
-            <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
-              Threat Intel v2.4.0
+            <h1 className="text-sm font-bold tracking-tight text-white leading-tight font-mono">SENTINEL WI-FI</h1>
+            <p className="text-[9px] font-mono text-zinc-400 uppercase tracking-widest">
+              Enterprise Home Portal
             </p>
           </div>
         </div>
@@ -131,15 +108,14 @@ export function Sidebar({ activeTab, setActiveTab, mobileOpen = false, onMobileC
         ))}
       </nav>
 
-      <div className="p-3 border-t border-border space-y-1">
-        <button className="w-full flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-all text-xs">
-          <Settings className="w-4 h-4" />
-          <span>Settings</span>
-        </button>
-        <button className="w-full flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-critical hover:bg-critical/5 rounded-lg transition-all text-xs">
-          <LogOut className="w-4 h-4" />
-          <span>Logout</span>
-        </button>
+      <div className="p-3 border-t border-border space-y-2">
+        <div className="px-3 py-2 rounded-lg bg-white/[0.03] border border-border flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+            <span className="text-[10px] font-mono text-zinc-300">Python 3.10 Daemon</span>
+          </div>
+          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-accent/20 text-accent font-bold">ACTIVE</span>
+        </div>
       </div>
     </div>
   );

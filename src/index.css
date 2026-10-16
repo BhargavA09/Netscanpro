@@ -3,9 +3,9 @@
 
 @theme {
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-  --color-bg: #0a0a0a;
-  --color-card: #141414;
-  --color-border: #262626;
+  --color-bg: #030712;
+  --color-card: #0f172a;
+  --color-border: #334155; /* High-contrast Slate-700 enterprise border */
   --color-accent: #00ff41; /* Matrix green */
   --color-critical: #ef4444;
   --color-high: #f97316;

@@ -3,21 +3,19 @@ import {
   Search, 
   X, 
   Users, 
-  ShieldAlert, 
-  FileText, 
-  Globe, 
-  Terminal, 
-  ArrowRight, 
-  CornerDownLeft, 
+  Wifi, 
+  Router, 
+  Radio, 
+  Activity, 
+  Laptop, 
   SlidersHorizontal,
   Command,
-  Tag,
-  KeyRound,
-  Laptop
+  ArrowRight,
+  Globe
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { fetchJson } from '../lib/api';
-import { IoC, ThreatActor, CmsItem, DnsRecord, Threat } from '../types';
+import { DnsRecord, WifiMeshTelemetryResponse, WifiEventLogEntry, NetworkDiscoveryDevice } from '../types';
 
 interface GlobalSearchProps {
   onNavigate: (tab: string, context?: any) => void;
@@ -25,7 +23,7 @@ interface GlobalSearchProps {
 
 interface SearchItem {
   id: string;
-  category: 'actor' | 'ioc' | 'article' | 'dns' | 'threat' | 'vault' | 'device';
+  category: 'device' | 'mesh' | 'dpi' | 'user' | 'log';
   title: string;
   subtitle: string;
   meta: string;
@@ -41,31 +39,36 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Cached data sets for searching
-  const [actors, setActors] = useState<ThreatActor[]>([]);
-  const [iocs, setIocs] = useState<IoC[]>([]);
-  const [cmsItems, setCmsItems] = useState<CmsItem[]>([]);
+  const [discoveryDevices, setDiscoveryDevices] = useState<NetworkDiscoveryDevice[]>([]);
+  const [telemetry, setTelemetry] = useState<WifiMeshTelemetryResponse | null>(null);
   const [dnsRecords, setDnsRecords] = useState<DnsRecord[]>([]);
-  const [alerts, setAlerts] = useState<Threat[]>([]);
+  const [logs, setLogs] = useState<WifiEventLogEntry[]>([]);
 
-  // Fetch search corpus
+  // Fetch search corpus from backend
   useEffect(() => {
     const loadSearchCorpus = async () => {
       try {
-        const [actorsData, iocsData, cmsData, dnsData, alertsData] = await Promise.allSettled([
-          fetchJson<ThreatActor[]>('/api/threat-actors'),
-          fetchJson<IoC[]>('/api/iocs'),
-          fetchJson<CmsItem[]>('/api/cms/items'),
+        const [devsRes, telRes, dnsRes, logsRes] = await Promise.allSettled([
+          fetchJson<{ devices: NetworkDiscoveryDevice[] }>('/api/network/discovery/devices'),
+          fetchJson<WifiMeshTelemetryResponse>('/api/wifi/telemetry'),
           fetchJson<DnsRecord[]>('/api/network/dns-queries'),
-          fetchJson<Threat[]>('/api/alerts')
+          fetchJson<{ logs: WifiEventLogEntry[] }>('/api/wifi/logs?limit=40')
         ]);
 
-        if (actorsData.status === 'fulfilled' && Array.isArray(actorsData.value)) setActors(actorsData.value);
-        if (iocsData.status === 'fulfilled' && Array.isArray(iocsData.value)) setIocs(iocsData.value);
-        if (cmsData.status === 'fulfilled' && Array.isArray(cmsData.value)) setCmsItems(cmsData.value);
-        if (dnsData.status === 'fulfilled' && Array.isArray(dnsData.value)) setDnsRecords(dnsData.value);
-        if (alertsData.status === 'fulfilled' && Array.isArray(alertsData.value)) setAlerts(alertsData.value);
+        if (devsRes.status === 'fulfilled' && devsRes.value?.devices) {
+          setDiscoveryDevices(devsRes.value.devices);
+        }
+        if (telRes.status === 'fulfilled' && telRes.value) {
+          setTelemetry(telRes.value);
+        }
+        if (dnsRes.status === 'fulfilled' && Array.isArray(dnsRes.value)) {
+          setDnsRecords(dnsRes.value);
+        }
+        if (logsRes.status === 'fulfilled' && Array.isArray(logsRes.value?.logs)) {
+          setLogs(logsRes.value.logs);
+        }
       } catch (err) {
-        // Silently tolerate
+        console.warn("Search corpus load failed:", err);
       }
     };
 
@@ -104,32 +107,25 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Parse filter category syntax: 'type:actor', 'type:ioc', 'type:article', 'type:dns', 'type:threat'
+  // Parse filter category syntax
   const { categoryFilter, cleanSearchTerm } = useMemo(() => {
     const lower = query.trim().toLowerCase();
     let catFilter: string | null = null;
-    let clean = query;
+    let clean = query.trim();
 
-    const prefixMap: Record<string, string> = {
-      'type:actor': 'actor',
-      'actor:': 'actor',
-      'type:ioc': 'ioc',
-      'ioc:': 'ioc',
-      'type:article': 'article',
-      'type:cms': 'article',
-      'type:doc': 'article',
-      'article:': 'article',
-      'type:dns': 'dns',
-      'dns:': 'dns',
-      'type:threat': 'threat',
-      'type:alert': 'threat',
-      'threat:': 'threat',
-      'type:vault': 'vault',
-      'vault:': 'vault',
-      'type:api': 'vault',
+    const prefixMap: Record<string, 'device' | 'mesh' | 'dpi' | 'user' | 'log'> = {
       'type:device': 'device',
       'device:': 'device',
-      'type:network': 'device'
+      'type:mesh': 'mesh',
+      'mesh:': 'mesh',
+      'type:dpi': 'dpi',
+      'dpi:': 'dpi',
+      'type:dns': 'dpi',
+      'dns:': 'dpi',
+      'type:user': 'user',
+      'user:': 'user',
+      'type:log': 'log',
+      'log:': 'log'
     };
 
     for (const [prefix, cat] of Object.entries(prefixMap)) {
@@ -147,111 +143,72 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
   const filteredItems = useMemo(() => {
     const allItems: SearchItem[] = [];
 
-    // Actors
-    actors.forEach(actor => {
+    // 1. Discovered Devices (ARPing + Nmap)
+    discoveryDevices.forEach(d => {
       allItems.push({
-        id: actor.id,
-        category: 'actor',
-        title: `${actor.name} (${actor.id})`,
-        subtitle: actor.origin ? `Origin: ${actor.origin} · Targets: ${actor.targetSectors.slice(0, 2).join(', ')}` : actor.description.slice(0, 70),
-        meta: `APT Group · ${actor.aliases.join(', ')}`,
-        tab: 'actors',
-        tags: actor.aliases
+        id: d.id || d.ip,
+        category: 'device',
+        title: `${d.hostname} (${d.ip})`,
+        subtitle: `MAC: ${d.mac} · Vendor: ${d.vendor} · Ports: ${d.openPorts.map(p => p.port).join(', ')}`,
+        meta: `DISCOVERY SCAN · Latency: ${d.latencyMs}ms · OS: ${d.osFingerprint}`,
+        tab: 'network',
+        tags: [d.ip, d.mac, d.vendor, d.hostname, d.userOwner]
       });
     });
 
-    // IoCs
-    iocs.forEach(ioc => {
-      allItems.push({
-        id: ioc.id || ioc.value,
-        category: 'ioc',
-        title: ioc.value,
-        subtitle: `Type: ${ioc.type} · Reputation: ${ioc.reputation} · Source: ${ioc.source || 'Intel Feed'}`,
-        meta: ioc.tags.join(', '),
-        tab: 'lookup',
-        tags: ioc.tags
+    // 2. Wi-Fi Mesh AP Nodes
+    if (telemetry?.nodes) {
+      telemetry.nodes.forEach(n => {
+        allItems.push({
+          id: n.id,
+          category: 'mesh',
+          title: `${n.name} (${n.room})`,
+          subtitle: `Model: ${n.model} · IP: ${n.ip} · Backhaul: ${n.backhaulType}`,
+          meta: `WI-FI MESH NODE · Radios: ${n.radios.map(r => r.band).join(', ')} · Floor: ${n.floor}`,
+          tab: 'wifimap',
+          tags: [n.name, n.ip, n.model, n.room, n.floor]
+        });
       });
-    });
+    }
 
-    // CMS Articles & Documents
-    cmsItems.forEach(item => {
-      allItems.push({
-        id: item.id,
-        category: 'article',
-        title: item.title,
-        subtitle: item.summary || item.content.slice(0, 80),
-        meta: `${item.type.toUpperCase()} · ${item.category} · Status: ${item.status}`,
-        tab: 'cms',
-        tags: item.tags
+    // 3. Connected Stations & Household Users
+    if (telemetry?.clients) {
+      telemetry.clients.forEach(c => {
+        allItems.push({
+          id: c.id,
+          category: 'user',
+          title: `${c.userName} - ${c.deviceHost}`,
+          subtitle: `IP: ${c.ip} · RSSI: ${c.rssiDbm} dBm · VLAN: ${c.vlan} · Role: ${c.userRole}`,
+          meta: `HOUSEHOLD ACCESS · CAKE SQM: ${c.qosPriority}`,
+          tab: 'neighborhood',
+          tags: [c.userName, c.deviceHost, c.ip, c.userRole]
+        });
       });
-    });
+    }
 
-    // DNS Records
+    // 4. DNS Queries & DPI Wire Frames
     dnsRecords.forEach(dns => {
       allItems.push({
         id: dns.id,
-        category: 'dns',
+        category: 'dpi',
         title: dns.query,
-        subtitle: `Type: ${dns.recordType} · Latency: ${dns.responseTimeMs}ms · DNSSEC: ${dns.dnssec}`,
-        meta: `Threat: ${dns.threatLevel} · Resolver: ${dns.resolver}`,
-        tab: 'tracking'
+        subtitle: `Type: ${dns.recordType} · Latency: ${dns.responseTimeMs}ms · Threat: ${dns.threatLevel}`,
+        meta: `DNS DPI TRACER · Resolver: ${dns.resolver}`,
+        tab: 'tracking',
+        tags: [dns.query, dns.recordType, dns.threatLevel]
       });
     });
 
-    // Threats / Alerts
-    alerts.forEach(alert => {
+    // 5. Universal System & Roaming Audit Logs
+    logs.forEach(l => {
       allItems.push({
-        id: alert.id,
-        category: 'threat',
-        title: alert.message,
-        subtitle: `Severity: ${alert.severity} · Source: ${alert.source || 'Engine'}`,
-        meta: alert.type,
-        tab: 'feed'
-      });
-    });
-
-    // Free API Vault Items
-    const defaultVaultApis = [
-      { id: 'shodan_internetdb', name: 'Shodan InternetDB', desc: 'Keyless IP lookup, open ports, hostnames, CVEs' },
-      { id: 'urlhaus_abuse_ch', name: 'URLhaus Malware URLs', desc: 'Public malware payload distribution URLs' },
-      { id: 'threatfox_abuse_ch', name: 'ThreatFox IOC Exchange', desc: 'Botnet & Cobalt Strike indicators of compromise' },
-      { id: 'cisa_kev', name: 'CISA Known Exploited Vulns (KEV)', desc: 'Actively exploited CVE catalog' },
-      { id: 'circl_cve', name: 'CIRCL CVE Search', desc: 'CVSS scores, zero-day CVE advisory database' },
-      { id: 'feodo_tracker', name: 'Feodo Tracker Botnet C2', desc: 'Active botnet C2 IP blocklist' },
-      { id: 'abuseipdb', name: 'AbuseIPDB Verification', desc: 'IP reputation & brute-force abuse confidence' }
-    ];
-
-    defaultVaultApis.forEach(v => {
-      allItems.push({
-        id: v.id,
-        category: 'vault',
-        title: `${v.name} (Free API Vault)`,
-        subtitle: v.desc,
-        meta: 'FREE API VAULT · Zero Cost OSINT',
-        tab: 'apivault',
-        tags: ['vault', 'api', 'free', 'osint']
-      });
-    });
-
-    // Network Neighborhood Subnet Assets ("Everyone in network")
-    const subnetNodes = [
-      { id: 'bhargav-workstation', name: 'Bhargav (Lead Architect & Developer)', ip: '192.168.1.100', role: 'Lead Systems Architect', status: 'Online' },
-      { id: 'sarah-chen', name: 'Sarah Chen (Senior SOC Analyst)', ip: '192.168.1.105', role: 'Threat Hunter', status: 'Online' },
-      { id: 'michael-rodriguez', name: 'Michael Rodriguez (Forensics)', ip: '192.168.1.135', role: 'Digital Forensics', status: 'Online' },
-      { id: 'gateway-udm', name: 'UniFi Dream Machine Pro Gateway', ip: '192.168.1.1', role: 'Core Subnet Gateway', status: 'Online' },
-      { id: 'dns-pihole', name: 'Pi-hole DNS Sinkhole Daemon', ip: '192.168.1.112', role: 'Recursive DNS', status: 'Online' },
-      { id: 'rogue-camera', name: 'Unregistered Cam WiFi (Rogue Device)', ip: '192.168.1.189', role: 'Flagged IoT Node', status: 'Suspicious' }
-    ];
-
-    subnetNodes.forEach(node => {
-      allItems.push({
-        id: node.id,
-        category: 'device',
-        title: `${node.name} (${node.ip})`,
-        subtitle: `Subnet Node · ${node.role} · Status: ${node.status}`,
-        meta: 'NETWORK NEIGHBORHOOD · Subnet Mesh',
-        tab: 'neighborhood',
-        tags: ['device', 'mesh', 'network', 'neighborhood', 'subnet', node.ip]
+        id: l.id,
+        category: 'log',
+        title: l.message,
+        subtitle: `Level: ${l.level} · Source: ${l.source} · Time: ${new Date(l.timestamp).toLocaleTimeString()}`,
+        meta: `EVENT LOG · Category: ${l.category.replace('_', ' ')}`,
+        tab: 'activity',
+        tags: [l.message, l.level, l.category, l.source]
       });
     });
 
@@ -273,16 +230,14 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
     }
 
     return filtered.slice(0, 15);
-  }, [actors, iocs, cmsItems, dnsRecords, alerts, categoryFilter, cleanSearchTerm]);
+  }, [discoveryDevices, telemetry, dnsRecords, logs, categoryFilter, cleanSearchTerm]);
 
-  // Handle item selection / navigation
   const handleSelect = (item: SearchItem) => {
     onNavigate(item.tab, { searchTargetId: item.id });
     setIsOpen(false);
     setQuery('');
   };
 
-  // Quick category prefix applicator
   const applyCategoryFilter = (cat: string) => {
     setQuery(`type:${cat} `);
     inputRef.current?.focus();
@@ -295,14 +250,12 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
 
   const getCategoryIcon = (cat: string) => {
     switch (cat) {
-      case 'actor': return <Users className="w-3.5 h-3.5 text-orange-400" />;
-      case 'ioc': return <ShieldAlert className="w-3.5 h-3.5 text-critical" />;
-      case 'article': return <FileText className="w-3.5 h-3.5 text-accent" />;
-      case 'dns': return <Globe className="w-3.5 h-3.5 text-blue-400" />;
-      case 'threat': return <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />;
-      case 'vault': return <KeyRound className="w-3.5 h-3.5 text-emerald-400" />;
       case 'device': return <Laptop className="w-3.5 h-3.5 text-sky-400" />;
-      default: return <Tag className="w-3.5 h-3.5 text-zinc-400" />;
+      case 'mesh': return <Router className="w-3.5 h-3.5 text-accent" />;
+      case 'user': return <Users className="w-3.5 h-3.5 text-emerald-400" />;
+      case 'dpi': return <Radio className="w-3.5 h-3.5 text-purple-400" />;
+      case 'log': return <Activity className="w-3.5 h-3.5 text-cyan-400" />;
+      default: return <Search className="w-3.5 h-3.5 text-zinc-400" />;
     }
   };
 
@@ -332,15 +285,15 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
               handleSelect(filteredItems[selectedIndex]);
             }
           }}
-          placeholder="Search (e.g. type:actor)..." 
-          className="bg-white/5 border border-border rounded-lg py-1.5 pl-8 sm:pl-9 pr-6 sm:pr-12 text-xs text-white focus:outline-none focus:border-accent/60 w-32 sm:w-64 md:w-80 lg:w-96 transition-all font-mono"
+          placeholder="Search devices, mesh APs, DNS, packets..." 
+          className="bg-white/5 border border-border rounded-lg py-1.5 pl-8 sm:pl-9 pr-6 sm:pr-12 text-xs text-white focus:outline-none focus:border-accent/60 w-36 sm:w-64 md:w-80 lg:w-96 transition-all font-mono"
         />
         
         {query ? (
           <button 
             type="button" 
             onClick={() => setQuery('')}
-            className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+            className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white cursor-pointer"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -353,7 +306,7 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
 
       {/* Dropdown Results & Filter Palette */}
       {isOpen && (
-        <div className="fixed sm:absolute inset-x-4 sm:inset-x-auto sm:left-0 top-16 sm:top-auto sm:mt-2 max-w-full sm:w-[480px] bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden font-mono">
+        <div className="fixed sm:absolute inset-x-4 sm:inset-x-auto sm:left-0 top-16 sm:top-auto sm:mt-2 max-w-full sm:w-[500px] bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden font-mono">
           {/* Category Filter Chips Ribbon */}
           <div className="p-2.5 bg-white/[0.02] border-b border-border flex items-center gap-1.5 overflow-x-auto text-[11px]">
             <span className="text-zinc-500 text-[10px] uppercase mr-1 flex items-center gap-1">
@@ -363,74 +316,56 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
             <button
               onClick={clearFilter}
               className={cn(
-                "px-2 py-0.5 rounded transition-colors text-[10px]",
+                "px-2 py-0.5 rounded transition-colors text-[10px] cursor-pointer",
                 !categoryFilter ? "bg-accent/20 text-accent font-semibold" : "text-zinc-400 hover:text-white"
               )}
             >
               All
             </button>
             <button
-              onClick={() => applyCategoryFilter('actor')}
-              className={cn(
-                "px-2 py-0.5 rounded transition-colors text-[10px]",
-                categoryFilter === 'actor' ? "bg-orange-500/20 text-orange-400 font-semibold" : "text-zinc-400 hover:text-white"
-              )}
-            >
-              type:actor
-            </button>
-            <button
-              onClick={() => applyCategoryFilter('ioc')}
-              className={cn(
-                "px-2 py-0.5 rounded transition-colors text-[10px]",
-                categoryFilter === 'ioc' ? "bg-critical/20 text-critical font-semibold" : "text-zinc-400 hover:text-white"
-              )}
-            >
-              type:ioc
-            </button>
-            <button
-              onClick={() => applyCategoryFilter('article')}
-              className={cn(
-                "px-2 py-0.5 rounded transition-colors text-[10px]",
-                categoryFilter === 'article' ? "bg-accent/20 text-accent font-semibold" : "text-zinc-400 hover:text-white"
-              )}
-            >
-              type:article
-            </button>
-            <button
-              onClick={() => applyCategoryFilter('dns')}
-              className={cn(
-                "px-2 py-0.5 rounded transition-colors text-[10px]",
-                categoryFilter === 'dns' ? "bg-blue-500/20 text-blue-400 font-semibold" : "text-zinc-400 hover:text-white"
-              )}
-            >
-              type:dns
-            </button>
-            <button
-              onClick={() => applyCategoryFilter('threat')}
-              className={cn(
-                "px-2 py-0.5 rounded transition-colors text-[10px]",
-                categoryFilter === 'threat' ? "bg-amber-500/20 text-amber-400 font-semibold" : "text-zinc-400 hover:text-white"
-              )}
-            >
-              type:threat
-            </button>
-            <button
-              onClick={() => applyCategoryFilter('vault')}
-              className={cn(
-                "px-2 py-0.5 rounded transition-colors text-[10px]",
-                categoryFilter === 'vault' ? "bg-emerald-500/20 text-emerald-400 font-semibold" : "text-zinc-400 hover:text-white"
-              )}
-            >
-              type:vault
-            </button>
-            <button
               onClick={() => applyCategoryFilter('device')}
               className={cn(
-                "px-2 py-0.5 rounded transition-colors text-[10px]",
+                "px-2 py-0.5 rounded transition-colors text-[10px] cursor-pointer",
                 categoryFilter === 'device' ? "bg-sky-500/20 text-sky-400 font-semibold" : "text-zinc-400 hover:text-white"
               )}
             >
               type:device
+            </button>
+            <button
+              onClick={() => applyCategoryFilter('mesh')}
+              className={cn(
+                "px-2 py-0.5 rounded transition-colors text-[10px] cursor-pointer",
+                categoryFilter === 'mesh' ? "bg-accent/20 text-accent font-semibold" : "text-zinc-400 hover:text-white"
+              )}
+            >
+              type:mesh
+            </button>
+            <button
+              onClick={() => applyCategoryFilter('dpi')}
+              className={cn(
+                "px-2 py-0.5 rounded transition-colors text-[10px] cursor-pointer",
+                categoryFilter === 'dpi' ? "bg-purple-500/20 text-purple-400 font-semibold" : "text-zinc-400 hover:text-white"
+              )}
+            >
+              type:dpi
+            </button>
+            <button
+              onClick={() => applyCategoryFilter('user')}
+              className={cn(
+                "px-2 py-0.5 rounded transition-colors text-[10px] cursor-pointer",
+                categoryFilter === 'user' ? "bg-emerald-500/20 text-emerald-400 font-semibold" : "text-zinc-400 hover:text-white"
+              )}
+            >
+              type:user
+            </button>
+            <button
+              onClick={() => applyCategoryFilter('log')}
+              className={cn(
+                "px-2 py-0.5 rounded transition-colors text-[10px] cursor-pointer",
+                categoryFilter === 'log' ? "bg-cyan-500/20 text-cyan-400 font-semibold" : "text-zinc-400 hover:text-white"
+              )}
+            >
+              type:log
             </button>
           </div>
 
@@ -441,7 +376,7 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
                 const isSelected = selectedIndex === index;
                 return (
                   <div
-                    key={`${item.category}-${item.id}-${index}`}
+                    key={`search-${item.category}-${item.id}-${index}`}
                     onClick={() => handleSelect(item)}
                     onMouseEnter={() => setSelectedIndex(index)}
                     className={cn(
@@ -450,22 +385,17 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
                     )}
                   >
                     <div className="flex items-start gap-2.5 min-w-0">
-                      <div className="mt-0.5 shrink-0">
+                      <div className="mt-0.5 p-1 rounded bg-white/5 border border-border shrink-0">
                         {getCategoryIcon(item.category)}
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-bold text-white truncate">{item.title}</p>
-                          <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-white/5 text-zinc-400">
-                            {item.category}
-                          </span>
-                        </div>
+                        <p className="text-xs font-bold text-white truncate">{item.title}</p>
                         <p className="text-[11px] text-zinc-400 truncate mt-0.5">{item.subtitle}</p>
-                        <p className="text-[10px] text-zinc-500 truncate mt-0.5">{item.meta}</p>
+                        <p className="text-[10px] text-zinc-500 mt-1 uppercase tracking-tight">{item.meta}</p>
                       </div>
                     </div>
 
-                    <div className="shrink-0 flex items-center gap-1 text-[10px] text-zinc-500">
+                    <div className="flex items-center gap-1.5 shrink-0 text-zinc-500 text-[10px]">
                       <span className="capitalize">{item.tab}</span>
                       <ArrowRight className="w-3 h-3 text-accent" />
                     </div>
@@ -473,19 +403,10 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
                 );
               })
             ) : (
-              <div className="p-8 text-center text-zinc-500 text-xs">
-                No results found for <span className="text-white">"{query}"</span>.
-                <p className="text-[10px] text-zinc-600 mt-1">
-                  Try syntax like <code className="text-accent">type:actor</code>, <code className="text-accent">type:ioc</code>, or <code className="text-accent">type:article</code>.
-                </p>
+              <div className="p-8 text-center text-zinc-500 text-xs font-mono">
+                No matching network assets or telemetry found
               </div>
             )}
-          </div>
-
-          {/* Footer Guide */}
-          <div className="p-2 border-t border-border bg-white/[0.02] flex items-center justify-between text-[10px] text-zinc-500 px-3">
-            <span>Use ↑↓ to navigate &middot; Enter to jump &middot; Esc to close</span>
-            <span className="text-accent">{filteredItems.length} items matched</span>
           </div>
         </div>
       )}
