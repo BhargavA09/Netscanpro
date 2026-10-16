@@ -450,6 +450,10 @@ export interface WifiClientUser {
   detectedBrowser?: string;
   screenRes?: string;
   rttLatencyMs?: number;
+  floor?: 'ground' | 'upper' | 'outdoor';
+  room?: string;
+  x?: number;
+  y?: number;
 }
 
 export interface OpenSourceRepo {

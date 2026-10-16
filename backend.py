@@ -2110,6 +2110,21 @@ class PythonApiHandler(BaseHTTPRequestHandler):
             add_log("INFO", "system_backend", f"Updated placement and coordinates for node {node['name']}.", "Python Engine", f"X: {node['x']}% · Y: {node['y']}%", node_id=node_id)
             return self.reply_json(200, {"success": True, "node": node})
 
+        # Update client device placement (x, y, floor, room)
+        if "/api/wifi/clients/" in path:
+            client_id = path.split("/")[4]
+            client = next((c for c in CLIENT_USERS if c["id"] == client_id), None)
+            if not client:
+                return self.reply_json(404, {"error": "Client device not found"})
+
+            if "x" in body: client["x"] = body["x"]
+            if "y" in body: client["y"] = body["y"]
+            if "floor" in body: client["floor"] = body["floor"]
+            if "room" in body: client["room"] = body["room"]
+
+            add_log("INFO", "client_activity", f"Updated floorplan placement for {client['deviceHost']}.", "Python Engine", f"X: {client.get('x')}% · Y: {client.get('y')}%", client_id=client_id)
+            return self.reply_json(200, {"success": True, "client": client})
+
         return self.reply_json(404, {"error": "PUT endpoint not found on Python backend"})
 
     def do_DELETE(self):
