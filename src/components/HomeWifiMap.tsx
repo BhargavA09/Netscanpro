@@ -51,7 +51,15 @@ import {
   Compass,
   Check,
   UserCheck,
-  SignalHigh
+  SignalHigh,
+  Flame,
+  Shield,
+  Waves,
+  Moon,
+  Eye,
+  Volume2,
+  Camera,
+  Move
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { fetchJson } from '../lib/api';
@@ -82,6 +90,23 @@ export function HomeWifiMap() {
   const [showBackhaulLinks, setShowBackhaulLinks] = useState(true);
   const [showClientPointers, setShowClientPointers] = useState(true);
   const [activeBandFilter, setActiveBandFilter] = useState<'all' | '2.4GHz' | '5GHz' | '6GHz'>('all');
+
+  // Heatmap & Signal Simulator State
+  const [showHeatmap, setShowHeatmap] = useState(true);
+  const [heatmapBand, setHeatmapBand] = useState<'all' | '2.4GHz' | '5GHz' | '6GHz'>('all');
+  const [showDeviceSignalRays, setShowDeviceSignalRays] = useState(true);
+  const [showWallLoss, setShowWallLoss] = useState(true);
+
+  // Active Ping & Hardware Strobe State
+  const [activePingClientId, setActivePingClientId] = useState<string | null>(null);
+  const [activePingData, setActivePingData] = useState<{ rttLatencyMs: number; jitterMs: number; packetLoss: number; timestamp: string } | null>(null);
+  const [strobeClientId, setStrobeClientId] = useState<string | null>(null);
+
+  // Interactive Microwave 2.4GHz Noise Simulator State
+  const [microwaveActive, setMicrowaveActive] = useState(false);
+
+  // Quick Device Category Filter on Floor Plan
+  const [deviceCategoryFilter, setDeviceCategoryFilter] = useState<'all' | 'computing' | 'mobile' | 'entertainment' | 'smarthome' | 'vehicle'>('all');
 
   // Search & Filters for connected clients
   const [clientSearch, setClientSearch] = useState('');
@@ -131,9 +156,10 @@ export function HomeWifiMap() {
   const [scanTelemetryResult, setScanTelemetryResult] = useState<any | null>(null);
   const [initialScanCompleted, setInitialScanCompleted] = useState(false);
 
-  // Canvas Dragging State
+  // Canvas Dragging State (Nodes or Clients)
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
+  const [draggingEntity, setDraggingEntity] = useState<{ type: 'node' | 'client'; id: string } | null>(null);
+  const draggingNodeId = draggingEntity?.type === 'node' ? draggingEntity.id : null;
 
   const fetchTelemetry = async (silent = false) => {
     if (!silent) setRefreshing(true);
@@ -305,6 +331,69 @@ export function HomeWifiMap() {
     if (!myDevice) return null;
     return nodes.find(n => n.id === myDevice.nodeId) || nodes[0] || null;
   }, [myDevice, nodes]);
+
+  // Fallback architectural room coordinates for all 15 household devices
+  const DEFAULT_CLIENT_COORDS: Record<string, { floor: 'ground' | 'upper' | 'outdoor'; room: string; x: number; y: number }> = {
+    'cli-1': { floor: 'ground', room: 'Home Office & Lab', x: 68, y: 28 },
+    'cli-2': { floor: 'ground', room: 'Home Office & Lab', x: 80, y: 20 },
+    'cli-3': { floor: 'ground', room: 'Home Office & Lab', x: 86, y: 36 },
+    'cli-4': { floor: 'ground', room: 'Home Office & Lab', x: 62, y: 42 },
+    'cli-5': { floor: 'ground', room: 'Living Room & Media Center', x: 16, y: 20 },
+    'cli-6': { floor: 'ground', room: 'Living Room & Media Center', x: 38, y: 18 },
+    'cli-7': { floor: 'ground', room: 'Kitchen & Dining', x: 24, y: 74 },
+    'cli-8': { floor: 'ground', room: 'Living Room & Media Center', x: 16, y: 34 },
+    'cli-9': { floor: 'upper', room: 'Gaming Lounge (Bedroom 2)', x: 76, y: 26 },
+    'cli-10': { floor: 'upper', room: 'Gaming Lounge (Bedroom 2)', x: 86, y: 38 },
+    'cli-11': { floor: 'upper', room: 'Master Bedroom Suite', x: 22, y: 28 },
+    'cli-12': { floor: 'upper', room: 'Nursery & Baby Room', x: 24, y: 74 },
+    'cli-13': { floor: 'outdoor', room: 'Garage & EV Bay', x: 26, y: 48 },
+    'cli-14': { floor: 'outdoor', room: 'Backyard Patio & Garden', x: 82, y: 72 },
+    'cli-15': { floor: 'outdoor', room: 'Garage & EV Bay', x: 26, y: 20 },
+  };
+
+  const getClientPosition = (client: WifiClientUser) => {
+    const fallback = DEFAULT_CLIENT_COORDS[client.id];
+    return {
+      floor: client.floor || fallback?.floor || 'ground',
+      room: client.room || fallback?.room || 'Living Room',
+      x: client.x ?? (fallback?.x ?? 50),
+      y: client.y ?? (fallback?.y ?? 50)
+    };
+  };
+
+  // Filtered devices displayed directly on the floor plan
+  const displayedClients = useMemo(() => {
+    return clients.filter(c => {
+      const pos = getClientPosition(c);
+      const matchesFloor = activeFloor === 'all' || pos.floor === activeFloor;
+      if (!matchesFloor) return false;
+
+      // Filter by category
+      if (deviceCategoryFilter !== 'all') {
+        if (deviceCategoryFilter === 'computing' && c.deviceCategory !== 'laptop') return false;
+        if (deviceCategoryFilter === 'mobile' && c.deviceCategory !== 'phone' && c.deviceCategory !== 'tablet') return false;
+        if (deviceCategoryFilter === 'entertainment' && c.deviceCategory !== 'smart_tv' && c.deviceCategory !== 'console') return false;
+        if (deviceCategoryFilter === 'smarthome' && c.deviceCategory !== 'smart_home') return false;
+        if (deviceCategoryFilter === 'vehicle' && c.deviceCategory !== 'car') return false;
+      }
+
+      // Filter by band
+      if (activeBandFilter !== 'all' && c.band !== activeBandFilter) return false;
+
+      // Filter by search
+      if (clientSearch.trim()) {
+        const q = clientSearch.toLowerCase();
+        const match = c.userName.toLowerCase().includes(q) ||
+          c.deviceHost.toLowerCase().includes(q) ||
+          c.ip.includes(q) ||
+          c.mac.toLowerCase().includes(q) ||
+          c.vendor.toLowerCase().includes(q);
+        if (!match) return false;
+      }
+
+      return true;
+    });
+  }, [clients, activeFloor, deviceCategoryFilter, activeBandFilter, clientSearch]);
 
   // Filtered nodes by floor
   const displayedNodes = useMemo(() => {
@@ -519,44 +608,185 @@ export function HomeWifiMap() {
     downloadAnchor.remove();
   };
 
-  // Node Drag & Reposition on Map Canvas
-  const handleMapMouseDown = (e: React.MouseEvent, nodeId: string) => {
+  // Entity Drag & Reposition on Map Canvas (Nodes or Client Devices)
+  const handleMapMouseDownNode = (e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation();
-    setDraggingNodeId(nodeId);
+    setDraggingEntity({ type: 'node', id: nodeId });
+  };
+
+  const handleMapMouseDownClient = (e: React.MouseEvent, clientId: string) => {
+    e.stopPropagation();
+    setDraggingEntity({ type: 'client', id: clientId });
   };
 
   const handleMapMouseMove = (e: React.MouseEvent) => {
-    if (!draggingNodeId || !mapContainerRef.current) return;
+    if (!draggingEntity || !mapContainerRef.current) return;
     const rect = mapContainerRef.current.getBoundingClientRect();
-    const x = Math.max(8, Math.min(92, Math.round(((e.clientX - rect.left) / rect.width) * 100)));
-    const y = Math.max(8, Math.min(92, Math.round(((e.clientY - rect.top) / rect.height) * 100)));
+    const x = Math.max(6, Math.min(94, Math.round(((e.clientX - rect.left) / rect.width) * 100)));
+    const y = Math.max(6, Math.min(94, Math.round(((e.clientY - rect.top) / rect.height) * 100)));
+
+    setTelemetry(prev => {
+      if (!prev) return null;
+      if (draggingEntity.type === 'node') {
+        return {
+          ...prev,
+          nodes: prev.nodes.map(n => n.id === draggingEntity.id ? { ...n, x, y } : n)
+        };
+      } else {
+        return {
+          ...prev,
+          clients: prev.clients.map(c => {
+            if (c.id === draggingEntity.id) {
+              const currentFloor = c.floor || 'ground';
+              const updatedRoom = determineRoomFromCoords(currentFloor, x, y);
+              return { ...c, x, y, room: updatedRoom };
+            }
+            return c;
+          })
+        };
+      }
+    });
+  };
+
+  const handleMapMouseUp = async () => {
+    if (!draggingEntity) return;
+    const curr = draggingEntity;
+    setDraggingEntity(null);
+
+    if (curr.type === 'node') {
+      const node = nodes.find(n => n.id === curr.id);
+      if (node) {
+        try {
+          await fetchJson(`/api/wifi/nodes/${curr.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ x: node.x, y: node.y })
+          });
+          await fetchHistoryAndLogs();
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    } else {
+      const client = clients.find(c => c.id === curr.id);
+      if (client) {
+        try {
+          await fetchJson(`/api/wifi/clients/${curr.id}/move`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ x: client.x, y: client.y, floor: client.floor, room: client.room })
+          });
+          await fetchHistoryAndLogs();
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    }
+  };
+
+  // Active Ping Feature: initiates simulated RTT ping animation and displays latency telemetry bubble
+  const handleTriggerActivePing = async (client: WifiClientUser) => {
+    setActivePingClientId(client.id);
+    setSelectedClientId(client.id);
+
+    const basePing = client.band === '6GHz' ? 3.6 : client.band === '5GHz' ? 5.2 : 11.4;
+    const initRtt = Math.round((basePing + (Math.random() * 1.6 - 0.6)) * 10) / 10;
+    const initJitter = Math.round((Math.random() * 0.9 + 0.2) * 10) / 10;
+    setActivePingData({
+      rttLatencyMs: initRtt,
+      jitterMs: initJitter,
+      packetLoss: 0.0,
+      timestamp: new Date().toLocaleTimeString()
+    });
+
+    try {
+      const res = await fetchJson<any>(`/api/wifi/clients/${client.id}/ping`, { method: 'POST' });
+      if (res && res.rttLatencyMs) {
+        setActivePingData({
+          rttLatencyMs: res.rttLatencyMs,
+          jitterMs: res.jitterMs,
+          packetLoss: res.packetLossPercent || 0,
+          timestamp: res.timestamp || new Date().toLocaleTimeString()
+        });
+      }
+    } catch {
+      // Retain active ping data
+    }
+  };
+
+  // Toggle Microwave 2.4GHz RF Noise Generator
+  const handleToggleMicrowave = () => {
+    const next = !microwaveActive;
+    setMicrowaveActive(next);
+
+    const entry: WifiEventLogEntry = {
+      id: `log-mw-${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString(),
+      level: next ? 'WARN' : 'INFO',
+      category: 'wifi_roaming',
+      message: next 
+        ? '⚡ Microwave 2.45GHz magnetron active in Kitchen! DAWN BTM steering dual-band clients to 5GHz.'
+        : 'Microwave 2.4GHz interference stopped. Channel 6-11 noise floor normalized.',
+      source: 'RF Interference Simulator',
+      details: next ? 'Elevated noise floor to -62 dBm. 2.4GHz signal degradation simulated.' : 'Noise floor normal (-92 dBm).'
+    };
+    setEventLogs(prev => [entry, ...prev]);
 
     setTelemetry(prev => {
       if (!prev) return null;
       return {
         ...prev,
-        nodes: prev.nodes.map(n => n.id === draggingNodeId ? { ...n, x, y } : n)
+        clients: prev.clients.map(c => {
+          if (c.band === '2.4GHz' && c.nodeId === 'node-gw') {
+            return {
+              ...c,
+              rssiDbm: next ? -76 : -48,
+              signalQuality: next ? 'Weak' : 'Excellent'
+            };
+          }
+          return c;
+        })
       };
     });
   };
 
-  const handleMapMouseUp = async () => {
-    if (!draggingNodeId) return;
-    const node = nodes.find(n => n.id === draggingNodeId);
-    const currId = draggingNodeId;
-    setDraggingNodeId(null);
+  // Bedtime Mode: 1-click pause for entertainment and gaming devices
+  const handleToggleBedtimeMode = () => {
+    const bedtimeIds = ['cli-5', 'cli-7', 'cli-9', 'cli-10'];
+    setTelemetry(prev => {
+      if (!prev) return null;
+      const anyPaused = prev.clients.some(c => bedtimeIds.includes(c.id) && c.internetPaused);
+      const newPaused = !anyPaused;
 
-    if (node) {
-      try {
-        await fetchJson(`/api/wifi/nodes/${currId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ x: node.x, y: node.y })
-        });
-        await fetchHistoryAndLogs();
-      } catch (err) {
-        console.error(err);
-      }
+      bedtimeIds.forEach(id => {
+        fetchJson(`/api/wifi/clients/${id}/pause`, { method: 'POST' }).catch(() => {});
+      });
+
+      const entry: WifiEventLogEntry = {
+        id: `log-bedtime-${Date.now()}`,
+        timestamp: new Date().toLocaleTimeString(),
+        level: newPaused ? 'WARN' : 'INFO',
+        category: 'security_firewall',
+        message: newPaused ? '🌙 Bedtime Mode ENABLED: Entertainment and gaming devices paused.' : 'Bedtime Mode DISABLED: Access restored.',
+        source: 'Household Rules Engine'
+      };
+      setEventLogs(prevLogs => [entry, ...prevLogs]);
+
+      return {
+        ...prev,
+        clients: prev.clients.map(c => bedtimeIds.includes(c.id) ? { ...c, internetPaused: newPaused } : c)
+      };
+    });
+  };
+
+  // Toggle IoT Quarantine
+  const handleToggleQuarantine = async (clientId: string) => {
+    try {
+      await fetchJson(`/api/wifi/clients/${clientId}/quarantine`, { method: 'POST' });
+      await fetchTelemetry(true);
+      await fetchHistoryAndLogs();
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -585,6 +815,111 @@ export function HomeWifiMap() {
         <div className={cn("w-1 rounded-xs", bars >= 4 ? color : "bg-zinc-700", "h-3.5")} />
       </div>
     );
+  };
+
+  // Helper Hardware Vendor Badge
+  const renderVendorBadge = (vendor: string) => {
+    const v = (vendor || '').toLowerCase();
+    if (v.includes('apple')) {
+      return (
+        <span className="px-1.5 py-0.5 rounded bg-white/10 text-white font-mono text-[9px] font-bold border border-white/20 flex items-center gap-1 shadow-xs">
+          <span></span> Apple
+        </span>
+      );
+    }
+    if (v.includes('sony')) {
+      return (
+        <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-100 font-mono text-[9px] font-bold border border-zinc-600 shadow-xs">
+          SONY
+        </span>
+      );
+    }
+    if (v.includes('tesla')) {
+      return (
+        <span className="px-1.5 py-0.5 rounded bg-red-950/80 text-red-300 font-mono text-[9px] font-bold border border-red-500/40 shadow-xs">
+          TESLA
+        </span>
+      );
+    }
+    if (v.includes('google')) {
+      return (
+        <span className="px-1.5 py-0.5 rounded bg-blue-950/80 text-blue-300 font-mono text-[9px] font-bold border border-blue-500/40 shadow-xs">
+          Google
+        </span>
+      );
+    }
+    if (v.includes('lenovo')) {
+      return (
+        <span className="px-1.5 py-0.5 rounded bg-red-900/60 text-red-200 font-mono text-[9px] font-bold border border-red-400/40 shadow-xs">
+          Lenovo
+        </span>
+      );
+    }
+    if (v.includes('sonos')) {
+      return (
+        <span className="px-1.5 py-0.5 rounded bg-zinc-900 text-white font-mono text-[9px] font-bold border border-zinc-700 shadow-xs">
+          SONOS
+        </span>
+      );
+    }
+    if (v.includes('nanit')) {
+      return (
+        <span className="px-1.5 py-0.5 rounded bg-cyan-950/80 text-cyan-300 font-mono text-[9px] font-bold border border-cyan-500/40 shadow-xs">
+          nanit
+        </span>
+      );
+    }
+    if (v.includes('ring')) {
+      return (
+        <span className="px-1.5 py-0.5 rounded bg-sky-950/80 text-sky-300 font-mono text-[9px] font-bold border border-sky-500/40 shadow-xs">
+          ring
+        </span>
+      );
+    }
+    if (v.includes('chamberlain') || v.includes('myq')) {
+      return (
+        <span className="px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 font-mono text-[9px] font-bold border border-emerald-500/40 shadow-xs">
+          myQ
+        </span>
+      );
+    }
+    if (v.includes('samsung')) {
+      return (
+        <span className="px-1.5 py-0.5 rounded bg-blue-900/60 text-blue-200 font-mono text-[9px] font-bold border border-blue-400/40 shadow-xs">
+          SAMSUNG
+        </span>
+      );
+    }
+    if (v.includes('nintendo')) {
+      return (
+        <span className="px-1.5 py-0.5 rounded bg-red-950 text-red-300 font-mono text-[9px] font-bold border border-red-500/40 shadow-xs">
+          Nintendo
+        </span>
+      );
+    }
+    return (
+      <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono text-[9px] border border-border shadow-xs">
+        {vendor.split(' ')[0]}
+      </span>
+    );
+  };
+
+  // Dynamic Room Resolver based on floor coordinates
+  const determineRoomFromCoords = (floor: string, x: number, y: number) => {
+    if (floor === 'ground') {
+      if (x >= 48) return 'Home Office & Lab';
+      if (y < 52) return 'Living Room & Media Center';
+      return 'Kitchen & Dining';
+    } else if (floor === 'upper') {
+      if (x >= 48) return 'Gaming Lounge (Bedroom 2)';
+      if (y < 52) return 'Master Bedroom Suite';
+      return 'Nursery & Baby Room';
+    } else if (floor === 'outdoor') {
+      if (x < 48) return 'Garage & EV Bay';
+      if (y < 52) return 'Backyard Patio & Garden';
+      return 'Perimeter Garden & Lawn';
+    }
+    return 'Living Room';
   };
 
   return (
@@ -863,58 +1198,145 @@ export function HomeWifiMap() {
             {/* Left 2 Cols: The Interactive Canvas */}
             <div className="xl:col-span-2 flex flex-col gap-4">
               {/* Map Controls & Floor Filters */}
-              <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-card border border-border text-xs">
-                {/* Floor Switcher */}
-                <div className="flex items-center gap-1 bg-black/30 p-1 rounded-lg border border-border/80">
-                  <span className="text-zinc-500 px-2 font-mono text-[11px]">Level:</span>
-                  {(['all', 'ground', 'upper', 'outdoor'] as const).map(floor => (
-                    <button
-                      key={floor}
-                      onClick={() => setActiveFloor(floor)}
-                      className={cn(
-                        "px-2.5 py-1 rounded text-xs capitalize transition cursor-pointer",
-                        activeFloor === floor ? "bg-white/10 text-white font-medium" : "text-zinc-400 hover:text-zinc-200"
-                      )}
-                    >
-                      {floor === 'all' ? 'All Levels' : floor === 'ground' ? 'Ground Floor' : floor === 'upper' ? 'Upper Floor' : 'Outdoor / Patio'}
-                    </button>
-                  ))}
+              <div className="flex flex-col gap-2.5 p-3 rounded-xl bg-card border border-border text-xs">
+                {/* Level Switcher & Household Quick Counts */}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-border/80">
+                    <span className="text-zinc-500 px-2 font-mono text-[11px] font-semibold">LEVEL:</span>
+                    {([
+                      { id: 'all', label: 'All Levels (Stacked)', count: clients.length },
+                      { id: 'ground', label: 'Ground Floor', count: clients.filter(c => (c.floor || DEFAULT_CLIENT_COORDS[c.id]?.floor) === 'ground').length },
+                      { id: 'upper', label: 'Upper Floor', count: clients.filter(c => (c.floor || DEFAULT_CLIENT_COORDS[c.id]?.floor) === 'upper').length },
+                      { id: 'outdoor', label: 'Outdoor & Garage', count: clients.filter(c => (c.floor || DEFAULT_CLIENT_COORDS[c.id]?.floor) === 'outdoor').length }
+                    ] as const).map(f => (
+                      <button
+                        key={f.id}
+                        onClick={() => setActiveFloor(f.id)}
+                        className={cn(
+                          "px-2.5 py-1 rounded text-xs transition cursor-pointer flex items-center gap-1.5",
+                          activeFloor === f.id 
+                            ? "bg-accent/20 text-accent font-bold border border-accent/40 shadow-xs" 
+                            : "text-zinc-400 hover:text-zinc-200"
+                        )}
+                      >
+                        <span>{f.label}</span>
+                        <span className={cn(
+                          "text-[10px] px-1 rounded font-mono",
+                          activeFloor === f.id ? "bg-accent/30 text-accent" : "bg-white/5 text-zinc-500"
+                        )}>
+                          {f.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Microwave 2.4G Interference Simulator Button */}
+                  <button
+                    onClick={handleToggleMicrowave}
+                    className={cn(
+                      "px-2.5 py-1.5 rounded-lg border text-xs font-mono transition cursor-pointer flex items-center gap-1.5",
+                      microwaveActive 
+                        ? "bg-rose-500/25 border-rose-500 text-rose-300 animate-pulse font-bold shadow-rose-500/20 shadow-md" 
+                        : "bg-white/5 border-border text-zinc-400 hover:text-white hover:border-zinc-700"
+                    )}
+                    title="Simulate 2.45GHz microwave magnetron interference in Kitchen to test DAWN client steering"
+                  >
+                    <Flame className={cn("w-3.5 h-3.5", microwaveActive ? "text-rose-400 animate-spin" : "text-zinc-500")} />
+                    <span>{microwaveActive ? "⚡ Microwave 2.4G ACTIVE" : "Test 2.4G Microwave Interference"}</span>
+                  </button>
                 </div>
 
-                {/* Layer Toggles */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowCoverageRadius(!showCoverageRadius)}
-                    className={cn(
-                      "px-2.5 py-1 rounded border text-xs transition cursor-pointer flex items-center gap-1.5",
-                      showCoverageRadius ? "bg-accent/15 border-accent/30 text-accent" : "bg-white/5 border-border text-zinc-400"
-                    )}
-                  >
-                    <Radio className="w-3 h-3" />
-                    <span>Coverage Radiuses</span>
-                  </button>
+                {/* Sub-Filters: Category & Layer Overlays */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/60">
+                  {/* Category Filter Pills */}
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className="text-zinc-500 text-[10px] font-mono mr-1">DEVICES:</span>
+                    {([
+                      { id: 'all', label: 'All', count: clients.length },
+                      { id: 'computing', label: 'Workstations', count: clients.filter(c => c.deviceCategory === 'laptop').length },
+                      { id: 'mobile', label: 'Mobile', count: clients.filter(c => c.deviceCategory === 'phone' || c.deviceCategory === 'tablet').length },
+                      { id: 'entertainment', label: 'Entertainment', count: clients.filter(c => c.deviceCategory === 'smart_tv' || c.deviceCategory === 'console').length },
+                      { id: 'smarthome', label: 'IoT / Smart Home', count: clients.filter(c => c.deviceCategory === 'smart_home').length },
+                      { id: 'vehicle', label: 'EV / Auto', count: clients.filter(c => c.deviceCategory === 'car').length }
+                    ] as const).map(cat => (
+                      <button
+                        key={cat.id}
+                        onClick={() => setDeviceCategoryFilter(cat.id)}
+                        className={cn(
+                          "px-2 py-0.5 rounded text-[11px] transition cursor-pointer flex items-center gap-1 font-mono",
+                          deviceCategoryFilter === cat.id
+                            ? "bg-white/15 text-white font-semibold border border-white/25"
+                            : "bg-white/5 text-zinc-400 hover:text-zinc-200 border border-transparent"
+                        )}
+                      >
+                        <span>{cat.label}</span>
+                        <span className="text-[9px] text-zinc-500 font-normal">({cat.count})</span>
+                      </button>
+                    ))}
+                  </div>
 
-                  <button
-                    onClick={() => setShowBackhaulLinks(!showBackhaulLinks)}
-                    className={cn(
-                      "px-2.5 py-1 rounded border text-xs transition cursor-pointer flex items-center gap-1.5",
-                      showBackhaulLinks ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "bg-white/5 border-border text-zinc-400"
-                    )}
-                  >
-                    <NetworkIcon className="w-3 h-3" />
-                    <span>Mesh Backhaul Links</span>
-                  </button>
+                  {/* Layer Overlays Toggles */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      onClick={() => setShowHeatmap(!showHeatmap)}
+                      className={cn(
+                        "px-2 py-1 rounded border text-[11px] font-mono transition cursor-pointer flex items-center gap-1",
+                        showHeatmap ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300 font-semibold" : "bg-white/5 border-border text-zinc-400"
+                      )}
+                      title="Toggle RF signal propagation heatmap contours"
+                    >
+                      <Waves className="w-3 h-3 text-emerald-400" />
+                      <span>Heatmap</span>
+                    </button>
 
-                  <button
-                    onClick={() => setShowClientPointers(!showClientPointers)}
-                    className={cn(
-                      "px-2.5 py-1 rounded border text-xs transition cursor-pointer flex items-center gap-1.5",
-                      showClientPointers ? "bg-sky-500/15 border-sky-500/30 text-sky-400" : "bg-white/5 border-border text-zinc-400"
-                    )}
-                  >
-                    <Users className="w-3 h-3" />
-                    <span>Client Badges</span>
-                  </button>
+                    <button
+                      onClick={() => setShowWallLoss(!showWallLoss)}
+                      className={cn(
+                        "px-2 py-1 rounded border text-[11px] font-mono transition cursor-pointer flex items-center gap-1",
+                        showWallLoss ? "bg-amber-500/20 border-amber-500/40 text-amber-300 font-semibold" : "bg-white/5 border-border text-zinc-400"
+                      )}
+                      title="Toggle physical wall loss attenuation display (Brick -12dB vs Drywall -4dB)"
+                    >
+                      <Layers className="w-3 h-3 text-amber-400" />
+                      <span>Wall Loss</span>
+                    </button>
+
+                    <button
+                      onClick={() => setShowDeviceSignalRays(!showDeviceSignalRays)}
+                      className={cn(
+                        "px-2 py-1 rounded border text-[11px] font-mono transition cursor-pointer flex items-center gap-1",
+                        showDeviceSignalRays ? "bg-sky-500/20 border-sky-500/40 text-sky-300 font-semibold" : "bg-white/5 border-border text-zinc-400"
+                      )}
+                      title="Toggle visual RF beams connecting clients to serving APs"
+                    >
+                      <SignalHigh className="w-3 h-3 text-sky-400" />
+                      <span>Signal Rays</span>
+                    </button>
+
+                    <button
+                      onClick={() => setShowBackhaulLinks(!showBackhaulLinks)}
+                      className={cn(
+                        "px-2 py-1 rounded border text-[11px] font-mono transition cursor-pointer flex items-center gap-1",
+                        showBackhaulLinks ? "bg-purple-500/20 border-purple-500/40 text-purple-300 font-semibold" : "bg-white/5 border-border text-zinc-400"
+                      )}
+                      title="Toggle AP mesh backhaul link topology"
+                    >
+                      <NetworkIcon className="w-3 h-3 text-purple-400" />
+                      <span>Backhaul</span>
+                    </button>
+
+                    <button
+                      onClick={() => setShowCoverageRadius(!showCoverageRadius)}
+                      className={cn(
+                        "px-2 py-1 rounded border text-[11px] font-mono transition cursor-pointer flex items-center gap-1",
+                        showCoverageRadius ? "bg-accent/20 border-accent/40 text-accent font-semibold" : "bg-white/5 border-border text-zinc-400"
+                      )}
+                      title="Toggle access point theoretical coverage zones"
+                    >
+                      <Radio className="w-3 h-3 text-accent" />
+                      <span>Radiuses</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -923,62 +1345,322 @@ export function HomeWifiMap() {
                 ref={mapContainerRef}
                 onMouseMove={handleMapMouseMove}
                 onMouseUp={handleMapMouseUp}
-                className="relative aspect-16/10 min-h-[460px] w-full bg-zinc-950/80 rounded-2xl border border-border overflow-hidden select-none shadow-2xl p-4"
+                className="relative aspect-16/10 min-h-[540px] w-full bg-zinc-950/95 rounded-2xl border border-border/80 overflow-hidden select-none shadow-2xl p-4"
                 style={{
                   backgroundImage: `
-                    radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0),
-                    linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
-                    linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px)
+                    radial-gradient(circle at 1px 1px, rgba(255,255,255,0.07) 1px, transparent 0),
+                    linear-gradient(to right, rgba(56,189,248,0.03) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(56,189,248,0.03) 1px, transparent 1px)
                   `,
                   backgroundSize: '24px 24px, 120px 120px, 120px 120px'
                 }}
               >
-                {/* Architectural Room Zones (Interactive Floor Guide) */}
-                <div className="absolute inset-4 rounded-xl border border-zinc-800/60 pointer-events-none">
-                  {/* Living Room Area */}
-                  <div className="absolute top-2 left-2 w-[42%] h-[48%] rounded-lg border border-zinc-800/80 bg-zinc-900/30 p-2.5 flex flex-col justify-between">
-                    <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-widest">Living Room & Lounge</span>
-                    <span className="text-[10px] text-zinc-600">Main Fiber ONT Termination</span>
-                  </div>
+                {/* Architectural Floor Blueprint Zones */}
+                <div className="absolute inset-4 rounded-xl pointer-events-none">
+                  {/* =================================================== */}
+                  {/* GROUND FLOOR ARCHITECTURAL BLUEPRINT                */}
+                  {/* =================================================== */}
+                  {(activeFloor === 'ground' || activeFloor === 'all') && (
+                    <div className={cn(
+                      "absolute inset-0 transition-opacity duration-300",
+                      activeFloor === 'all' ? "opacity-90" : "opacity-100"
+                    )}>
+                      {/* Living Room & Media Center (Top-Left) */}
+                      <div className="absolute top-1 left-1 w-[46%] h-[50%] rounded-xl border-2 border-zinc-700/80 bg-zinc-900/35 p-3 flex flex-col justify-between shadow-inner">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <Tv className="w-3 h-3 text-sky-400" />
+                            Living Room & Media Center
+                          </span>
+                          <span className="text-[9px] font-mono text-zinc-500 bg-black/40 px-1.5 py-0.5 rounded border border-zinc-800">
+                            ONT Fiber 1.0 Gbps
+                          </span>
+                        </div>
 
-                  {/* Kitchen & Dining */}
-                  <div className="absolute bottom-2 left-2 w-[42%] h-[44%] rounded-lg border border-zinc-800/80 bg-zinc-900/20 p-2.5 flex flex-col justify-between">
-                    <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-widest">Kitchen & Dining</span>
-                    <span className="text-[10px] text-zinc-600">Smart Appliances / IoT Hub</span>
-                  </div>
+                        {/* Architectural Living Room Furnishings Visuals */}
+                        <div className="grid grid-cols-2 gap-2 text-[9px] font-mono text-zinc-500 pointer-events-none">
+                          <div className="p-1 rounded bg-black/30 border border-zinc-800/80 flex items-center gap-1 text-zinc-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                            <span>75&quot; OLED TV Mount</span>
+                          </div>
+                          <div className="p-1 rounded bg-black/30 border border-zinc-800/80 flex items-center gap-1 text-zinc-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                            <span>Sonos Soundbar</span>
+                          </div>
+                        </div>
 
-                  {/* Home Office / Lab */}
-                  <div className="absolute top-2 right-2 w-[52%] h-[46%] rounded-lg border border-zinc-800/80 bg-zinc-900/40 p-2.5 flex flex-col justify-between">
-                    <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-widest">Home Office & Workstation</span>
-                    <span className="text-[10px] text-zinc-600">Cat6a 2.5GbE PoE Backhaul</span>
-                  </div>
+                        <div className="flex items-center justify-between text-[9px] text-zinc-500 font-mono">
+                          <span className="flex items-center gap-1 text-amber-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                            Fiber ONT Gateway Termination
+                          </span>
+                          {showWallLoss && (
+                            <span className="text-zinc-600">Ext Brick: -12dBm</span>
+                          )}
+                        </div>
+                      </div>
 
-                  {/* Upstairs / Master Bedroom & Patio */}
-                  <div className="absolute bottom-2 right-2 w-[52%] h-[46%] rounded-lg border border-zinc-800/80 bg-zinc-900/20 p-2.5 flex flex-col justify-between">
-                    <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-widest">Backyard Patio & Garage</span>
-                    <span className="text-[10px] text-zinc-600">High-Gain Outdoor Weatherproof AP</span>
-                  </div>
+                      {/* Kitchen & Dining Island (Bottom-Left) */}
+                      <div className={cn(
+                        "absolute bottom-1 left-1 w-[46%] h-[46%] rounded-xl border-2 border-zinc-700/80 bg-zinc-900/25 p-3 flex flex-col justify-between shadow-inner transition-colors",
+                        microwaveActive && "bg-rose-950/20 border-rose-500/60"
+                      )}>
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <Home className="w-3 h-3 text-amber-400" />
+                            Kitchen & Dining Island
+                          </span>
+                          {microwaveActive ? (
+                            <span className="text-[9px] font-mono text-rose-300 bg-rose-500/20 px-1.5 py-0.5 rounded border border-rose-500/40 animate-pulse font-bold">
+                              ⚡ Magnetron 2.45GHz ON
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-mono text-zinc-500 bg-black/40 px-1.5 py-0.5 rounded border border-zinc-800">
+                              Smart IoT Hub
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Architectural Island Representation */}
+                        <div className="p-1.5 rounded-lg bg-black/30 border border-zinc-800 flex items-center justify-between text-[9px] font-mono text-zinc-400">
+                          <span>Island Counter · 3 Barstools</span>
+                          <span className="text-zinc-500">Dual-Band 2.4G/5G</span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[9px] text-zinc-500 font-mono">
+                          <span>Smart Appliances / Refrigerator</span>
+                          {showWallLoss && (
+                            <span className="text-zinc-600">Drywall: -4dBm</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Home Office & Research Lab (Right Half) */}
+                      <div className="absolute top-1 right-1 w-[51%] h-[98%] rounded-xl border-2 border-sky-500/30 bg-sky-950/10 p-3.5 flex flex-col justify-between shadow-inner">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <Laptop className="w-3 h-3 text-emerald-400" />
+                            Home Office & Research Lab
+                          </span>
+                          <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded border border-emerald-500/30 font-bold">
+                            2.5 GbE PoE Backhaul
+                          </span>
+                        </div>
+
+                        {/* Office Architectural Furniture */}
+                        <div className="space-y-1.5 text-[9px] font-mono text-zinc-400">
+                          <div className="p-1.5 rounded bg-black/40 border border-zinc-800/80 flex items-center justify-between">
+                            <span className="text-sky-300 font-semibold flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
+                              Primary Workstation Desk (Dual 4K Studio Displays)
+                            </span>
+                            <span className="text-zinc-500">Wi-Fi 6E 6GHz Active</span>
+                          </div>
+                          <div className="p-1 rounded bg-black/30 border border-zinc-800/60 flex items-center justify-between text-zinc-500">
+                            <span>Patch Panel & 8-Port Managed Switch (VLAN 10/20)</span>
+                            <span className="text-emerald-400">Cat6a 10Gbps</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[9px] text-zinc-500 font-mono">
+                          <span className="text-sky-300 font-bold">★ Your MacBook Pro Station</span>
+                          {showWallLoss && (
+                            <span className="text-zinc-600">Int Partition: -4dBm</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* =================================================== */}
+                  {/* UPPER FLOOR ARCHITECTURAL BLUEPRINT                */}
+                  {/* =================================================== */}
+                  {activeFloor === 'upper' && (
+                    <div className="absolute inset-0">
+                      {/* Master Bedroom Suite (Top-Left) */}
+                      <div className="absolute top-1 left-1 w-[46%] h-[50%] rounded-xl border-2 border-indigo-500/30 bg-indigo-950/15 p-3 flex flex-col justify-between shadow-inner">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <Moon className="w-3 h-3 text-indigo-400" />
+                            Master Bedroom Suite
+                          </span>
+                          <span className="text-[9px] font-mono text-zinc-400 bg-black/40 px-1.5 py-0.5 rounded border border-zinc-800">
+                            En-Suite Bath
+                          </span>
+                        </div>
+                        <div className="p-1.5 rounded bg-black/30 border border-zinc-800 text-[9px] font-mono text-zinc-400">
+                          King Bed with Dual Nightstands · Sonos Era 300
+                        </div>
+                        <div className="flex items-center justify-between text-[9px] text-zinc-500 font-mono">
+                          <span>Quiet Hours Enabled</span>
+                          {showWallLoss && <span className="text-zinc-600">Drywall: -4dBm</span>}
+                        </div>
+                      </div>
+
+                      {/* Nursery & Baby Room (Bottom-Left) */}
+                      <div className="absolute bottom-1 left-1 w-[46%] h-[46%] rounded-xl border-2 border-cyan-500/30 bg-cyan-950/15 p-3 flex flex-col justify-between shadow-inner">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <Eye className="w-3 h-3 text-cyan-400" />
+                            Nursery & Baby Room
+                          </span>
+                          <span className="text-[9px] font-mono text-cyan-400 bg-cyan-500/20 px-1.5 py-0.5 rounded border border-cyan-500/30">
+                            Continuous 24/7 Stream
+                          </span>
+                        </div>
+                        <div className="p-1.5 rounded bg-black/30 border border-zinc-800 text-[9px] font-mono text-zinc-400">
+                          Crib & Nanit Pro Smart Baby Cam (Zero-Drop Stream)
+                        </div>
+                        <div className="flex items-center justify-between text-[9px] text-zinc-500 font-mono">
+                          <span>Air Quality & Temp Sensor</span>
+                          {showWallLoss && <span className="text-zinc-600">Drywall: -4dBm</span>}
+                        </div>
+                      </div>
+
+                      {/* Gaming Lounge & Bedroom 2 (Right Half) */}
+                      <div className="absolute top-1 right-1 w-[51%] h-[98%] rounded-xl border-2 border-purple-500/30 bg-purple-950/15 p-3 flex flex-col justify-between shadow-inner">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <Gamepad2 className="w-3 h-3 text-purple-400" />
+                            Gaming Lounge & Bedroom 2
+                          </span>
+                          <span className="text-[9px] font-mono text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/30 font-bold">
+                            Low Latency 5GHz
+                          </span>
+                        </div>
+                        <div className="space-y-1.5 text-[9px] font-mono text-zinc-400">
+                          <div className="p-1.5 rounded bg-black/40 border border-zinc-800 flex items-center justify-between">
+                            <span className="text-purple-300 font-bold">PlayStation 5 (4K 120Hz Low Latency)</span>
+                            <span className="text-emerald-400">2.1ms Ping</span>
+                          </div>
+                          <div className="p-1 rounded bg-black/30 border border-zinc-800 flex items-center justify-between text-zinc-500">
+                            <span>Nintendo Switch OLED Station</span>
+                            <span>Ch 44 (80MHz)</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-[9px] text-zinc-500 font-mono">
+                          <span>Upstairs Mesh Satellite Affinity</span>
+                          {showWallLoss && <span className="text-zinc-600">Drywall: -4dBm</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* =================================================== */}
+                  {/* OUTDOOR & GARAGE ARCHITECTURAL BLUEPRINT            */}
+                  {/* =================================================== */}
+                  {activeFloor === 'outdoor' && (
+                    <div className="absolute inset-0">
+                      {/* 2-Car Garage & EV Charging Bay (Left Half) */}
+                      <div className="absolute top-1 left-1 w-[46%] h-[98%] rounded-xl border-2 border-red-500/30 bg-zinc-900/40 p-3.5 flex flex-col justify-between shadow-inner">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] font-bold text-red-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <Car className="w-3 h-3 text-red-400" />
+                            2-Car Garage & EV Charging Bay
+                          </span>
+                          <span className="text-[9px] font-mono text-red-400 bg-red-500/20 px-2 py-0.5 rounded border border-red-500/30 font-bold">
+                            240V 48A Level 2
+                          </span>
+                        </div>
+                        <div className="space-y-1.5 text-[9px] font-mono text-zinc-400">
+                          <div className="p-2 rounded bg-black/40 border border-zinc-800 flex items-center justify-between">
+                            <span className="text-red-300 font-bold">Tesla Model Y (OTA Updates & Sentry Mode)</span>
+                            <span className="text-zinc-400">-52 dBm</span>
+                          </div>
+                          <div className="p-1.5 rounded bg-black/30 border border-zinc-800 flex items-center justify-between text-zinc-500">
+                            <span>Chamberlain myQ Smart Garage Door Opener</span>
+                            <span className="text-emerald-400">Online</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-[9px] text-zinc-500 font-mono">
+                          <span>Heavy Concrete & Steel Attenuation</span>
+                          {showWallLoss && <span className="text-amber-500 font-bold">Exterior Wall: -14dBm</span>}
+                        </div>
+                      </div>
+
+                      {/* Covered Patio & Pergola (Top-Right) */}
+                      <div className="absolute top-1 right-1 w-[51%] h-[48%] rounded-xl border-2 border-emerald-500/30 bg-emerald-950/15 p-3 flex flex-col justify-between shadow-inner">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <Home className="w-3 h-3 text-emerald-400" />
+                            Covered Patio & Dining Pergola
+                          </span>
+                          <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                            Weatherproof AP
+                          </span>
+                        </div>
+                        <div className="p-1.5 rounded bg-black/30 border border-zinc-800 text-[9px] font-mono text-zinc-400">
+                          High-Gain Outdoor Wi-Fi 6 Access Point
+                        </div>
+                        <div className="flex items-center justify-between text-[9px] text-zinc-500 font-mono">
+                          <span>Pool & Lounge Deck Coverage</span>
+                          {showWallLoss && <span className="text-zinc-600">Open Air: -1dBm</span>}
+                        </div>
+                      </div>
+
+                      {/* Perimeter Garden & Lawn (Bottom-Right) */}
+                      <div className="absolute bottom-1 right-1 w-[51%] h-[48%] rounded-xl border-2 border-emerald-500/20 bg-emerald-950/10 p-3 flex flex-col justify-between shadow-inner">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <Camera className="w-3 h-3 text-sky-400" />
+                            Perimeter Garden & Lawn
+                          </span>
+                          <span className="text-[9px] font-mono text-zinc-400 bg-black/40 px-1.5 py-0.5 rounded border border-zinc-800">
+                            Security Zone
+                          </span>
+                        </div>
+                        <div className="p-1.5 rounded bg-black/30 border border-zinc-800 text-[9px] font-mono text-zinc-400">
+                          Amazon Ring Floodlight Cam Pro (PIR Motion & HD Video)
+                        </div>
+                        <div className="flex items-center justify-between text-[9px] text-zinc-500 font-mono">
+                          <span>Perimeter Motion Sensor</span>
+                          {showWallLoss && <span className="text-zinc-600">Stucco: -8dBm</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* SVG Connections for Mesh Backhaul and Client Associations */}
+                {/* SVG Connections, RF Propagation Contours, Wall Lines, and Ping Waves */}
                 <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
                   <defs>
                     <linearGradient id="backhaulEthernet" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.8" />
+                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.85" />
                       <stop offset="100%" stopColor="#34d399" stopOpacity="0.4" />
                     </linearGradient>
                     <linearGradient id="backhaulWireless" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.7" />
-                      <stop offset="100%" stopColor="#818cf8" stopOpacity="0.3" />
+                      <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.8" />
+                      <stop offset="100%" stopColor="#818cf8" stopOpacity="0.4" />
+                    </linearGradient>
+                    <linearGradient id="ray6GHz" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#c084fc" stopOpacity="0.8" />
+                      <stop offset="100%" stopColor="#a855f7" stopOpacity="0.25" />
+                    </linearGradient>
+                    <linearGradient id="ray5GHz" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.75" />
+                      <stop offset="100%" stopColor="#0284c7" stopOpacity="0.2" />
+                    </linearGradient>
+                    <linearGradient id="ray24GHz" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.7" />
+                      <stop offset="100%" stopColor="#d97706" stopOpacity="0.2" />
                     </linearGradient>
                   </defs>
 
-                  {/* Backhaul Mesh Links */}
+                  {/* Physical Wall Loss Lines Simulator */}
+                  {showWallLoss && (
+                    <g key="wall-loss-overlay" className="opacity-75">
+                      {/* Main Center Partition Wall */}
+                      <line x1="48%" y1="2%" x2="48%" y2="98%" stroke="#71717a" strokeWidth="4" strokeDasharray="8 4" />
+                      {/* Left Horizontal Dividing Wall */}
+                      <line x1="2%" y1="52%" x2="48%" y2="52%" stroke="#71717a" strokeWidth="3" />
+                    </g>
+                  )}
+
+                  {/* Mesh Backhaul Links */}
                   {showBackhaulLinks && displayedNodes.map(node => {
                     if (!node.backhaul.parentNodeId) return null;
                     const parent = nodes.find(n => n.id === node.backhaul.parentNodeId);
                     if (!parent) return null;
-
                     const isEth = node.backhaul.type === 'ethernet';
 
                     return (
@@ -989,19 +1671,18 @@ export function HomeWifiMap() {
                           x2={`${node.x}%`}
                           y2={`${node.y}%`}
                           stroke={isEth ? 'url(#backhaulEthernet)' : 'url(#backhaulWireless)'}
-                          strokeWidth={isEth ? "2.5" : "1.8"}
+                          strokeWidth={isEth ? "3" : "2"}
                           strokeDasharray={isEth ? "none" : "6 4"}
-                          className="opacity-70"
+                          className="opacity-80"
                         />
-                        {/* Midpoint link rate pill label */}
                         <foreignObject
-                          x={`${(parent.x + node.x) / 2 - 40}%`}
-                          y={`${(parent.y + node.y) / 2 - 12}%`}
-                          width="80"
-                          height="24"
+                          x={`${(parent.x + node.x) / 2 - 38}%`}
+                          y={`${(parent.y + node.y) / 2 - 10}%`}
+                          width="76"
+                          height="20"
                         >
                           <div className="flex items-center justify-center">
-                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-950/90 border border-zinc-700 text-zinc-300 shadow">
+                            <span className="text-[8px] font-mono px-1.5 py-0.2 rounded bg-zinc-950/90 border border-zinc-700 text-zinc-300 shadow">
                               {isEth ? '⚡ ' : '📶 '}{node.backhaul.linkSpeedMbps}M
                             </span>
                           </div>
@@ -1010,80 +1691,150 @@ export function HomeWifiMap() {
                     );
                   })}
 
-                  {/* Special Glowing Link for "Your Device" */}
-                  {myDevice && myDeviceNode && (
-                    <g key="my-device-link">
-                      <line
-                        x1={`${myDeviceNode.x}%`}
-                        y1={`${myDeviceNode.y}%`}
-                        x2={`${myDeviceNode.x + 8}%`}
-                        y2={`${myDeviceNode.y + 12}%`}
-                        stroke="#38bdf8"
-                        strokeWidth="2"
-                        strokeDasharray="4 4"
-                        className="animate-pulse opacity-80"
-                      />
-                    </g>
-                  )}
+                  {/* Device Signal Rays Connecting Devices to Connected AP */}
+                  {showDeviceSignalRays && displayedClients.map(client => {
+                    const pos = getClientPosition(client);
+                    const node = nodes.find(n => n.id === client.nodeId) || nodes[0];
+                    if (!node) return null;
+
+                    const isPinged = activePingClientId === client.id;
+                    const is6G = client.band === '6GHz';
+                    const is5G = client.band === '5GHz';
+                    const strokeGrad = is6G ? 'url(#ray6GHz)' : is5G ? 'url(#ray5GHz)' : 'url(#ray24GHz)';
+
+                    return (
+                      <g key={`ray-${client.id}`}>
+                        <line
+                          x1={`${node.x}%`}
+                          y1={`${node.y}%`}
+                          x2={`${pos.x}%`}
+                          y2={`${pos.y}%`}
+                          stroke={strokeGrad}
+                          strokeWidth={isPinged ? "3" : client.isMyDevice ? "2.5" : "1.2"}
+                          strokeDasharray={isPinged ? "none" : "4 3"}
+                          className={cn(
+                            "transition-all",
+                            isPinged && "animate-pulse stroke-sky-400 stroke-2",
+                            client.isMyDevice && "opacity-90"
+                          )}
+                        />
+
+                        {/* Active Ping Sonar Travelling Pulse Animation */}
+                        {isPinged && (
+                          <circle
+                            r="6"
+                            fill="#38bdf8"
+                            className="animate-ping"
+                            style={{
+                              animationDuration: '1.2s'
+                            }}
+                          >
+                            <animate
+                              attributeName="cx"
+                              from={`${node.x}%`}
+                              to={`${pos.x}%`}
+                              dur="0.8s"
+                              repeatCount="indefinite"
+                            />
+                            <animate
+                              attributeName="cy"
+                              from={`${node.y}%`}
+                              to={`${pos.y}%`}
+                              dur="0.8s"
+                              repeatCount="indefinite"
+                            />
+                          </circle>
+                        )}
+                      </g>
+                    );
+                  })}
                 </svg>
 
-                {/* Node Coverage Radiuses (Rendered behind nodes) */}
-                {showCoverageRadius && displayedNodes.map(node => {
-                  const isSelected = selectedNodeId === node.id;
-                  const radiusPixels = (node.coverageRadiusMeters * 6.5);
+                {/* RF Signal Heatmap Propagation Contours */}
+                {showHeatmap && displayedNodes.map(node => {
+                  const radiusPixels = (node.coverageRadiusMeters * 8.5);
+                  return (
+                    <div
+                      key={`heatmap-${node.id}`}
+                      className="absolute rounded-full pointer-events-none transition-all duration-500 -translate-x-1/2 -translate-y-1/2"
+                      style={{
+                        left: `${node.x}%`,
+                        top: `${node.y}%`,
+                        width: `${radiusPixels * 2}px`,
+                        height: `${radiusPixels * 2}px`,
+                        background: 'radial-gradient(circle, rgba(16,185,129,0.22) 0%, rgba(56,189,248,0.16) 40%, rgba(245,158,11,0.08) 70%, rgba(239,68,68,0.03) 88%, transparent 100%)',
+                        border: '1px dashed rgba(56,189,248,0.25)'
+                      }}
+                    />
+                  );
+                })}
 
+                {/* Coverage Radiuses Overlay (when enabled) */}
+                {showCoverageRadius && !showHeatmap && displayedNodes.map(node => {
+                  const radiusPixels = (node.coverageRadiusMeters * 6.5);
                   return (
                     <div
                       key={`radius-${node.id}`}
-                      className="absolute rounded-full pointer-events-none transition-all duration-300 -translate-x-1/2 -translate-y-1/2"
+                      className="absolute rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2"
                       style={{
                         left: `${node.x}%`,
                         top: `${node.y}%`,
                         width: `${radiusPixels * 2}px`,
                         height: `${radiusPixels * 2}px`,
                         background: node.role === 'gateway'
-                          ? 'radial-gradient(circle, rgba(239,68,68,0.12) 0%, rgba(239,68,68,0.02) 70%, transparent 100%)'
-                          : isSelected
-                          ? 'radial-gradient(circle, rgba(56,189,248,0.18) 0%, rgba(56,189,248,0.03) 70%, transparent 100%)'
-                          : 'radial-gradient(circle, rgba(16,185,129,0.12) 0%, rgba(16,185,129,0.02) 70%, transparent 100%)',
-                        border: isSelected
-                          ? '1px dashed rgba(56,189,248,0.4)'
-                          : '1px dashed rgba(255,255,255,0.08)'
+                          ? 'radial-gradient(circle, rgba(239,68,68,0.12) 0%, transparent 80%)'
+                          : 'radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 80%)',
+                        border: '1px dashed rgba(255,255,255,0.12)'
                       }}
                     />
                   );
                 })}
 
-                {/* Interactive Wi-Fi Node Markers */}
+                {/* Microwave 2.4G Interference Noise Bloom in Kitchen */}
+                {microwaveActive && (
+                  <div
+                    className="absolute rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2 animate-ping"
+                    style={{
+                      left: '24%',
+                      top: '74%',
+                      width: '240px',
+                      height: '240px',
+                      background: 'radial-gradient(circle, rgba(239,68,68,0.35) 0%, rgba(245,158,11,0.2) 60%, transparent 100%)',
+                      border: '2px solid rgba(239,68,68,0.6)'
+                    }}
+                  />
+                )}
+
+                {/* =================================================== */}
+                {/* INTERACTIVE WI-FI ACCESS POINT NODES               */}
+                {/* =================================================== */}
                 {displayedNodes.map(node => {
                   const isSelected = selectedNodeId === node.id;
-                  const isDragging = draggingNodeId === node.id;
+                  const isDragging = draggingEntity?.type === 'node' && draggingEntity.id === node.id;
                   const nodeClients = clients.filter(c => c.nodeId === node.id);
                   const hasMyDevice = myDevice && myDevice.nodeId === node.id;
 
                   return (
                     <div
                       key={node.id}
-                      onMouseDown={(e) => handleMapMouseDown(e, node.id)}
+                      onMouseDown={(e) => handleMapMouseDownNode(e, node.id)}
                       onClick={() => setSelectedNodeId(node.id === selectedNodeId ? null : node.id)}
                       className={cn(
                         "absolute -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab active:cursor-grabbing transition-transform group",
-                        isDragging && "scale-110",
+                        isDragging && "scale-110 z-40",
                         isSelected && "scale-105"
                       )}
                       style={{ left: `${node.x}%`, top: `${node.y}%` }}
                     >
-                      {/* Node Physical Anchor */}
                       <div className={cn(
                         "relative p-2.5 rounded-2xl flex items-center gap-2.5 border shadow-xl backdrop-blur-md transition-all",
                         hasMyDevice && "ring-2 ring-sky-400/80 shadow-sky-500/30",
                         isSelected
-                          ? "bg-accent/25 border-accent text-white ring-2 ring-accent/30 shadow-accent/20"
+                          ? "bg-accent/25 border-accent text-white ring-2 ring-accent/40 shadow-accent/20"
                           : node.role === 'gateway'
                           ? "bg-zinc-900/90 border-red-500/40 text-red-300 hover:border-red-400"
                           : "bg-zinc-900/90 border-zinc-700/80 text-zinc-200 hover:border-accent/60"
                       )}>
-                        {/* Node Icon with Online Pulse */}
                         <div className="relative">
                           <div className={cn(
                             "w-8 h-8 rounded-xl flex items-center justify-center",
@@ -1094,7 +1845,6 @@ export function HomeWifiMap() {
                           <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-zinc-950 animate-pulse" />
                         </div>
 
-                        {/* Node Name & Bandwidth info */}
                         <div className="text-left pr-1">
                           <div className="flex items-center gap-1.5">
                             <span className="text-xs font-bold text-white tracking-tight leading-none whitespace-nowrap">
@@ -1113,10 +1863,10 @@ export function HomeWifiMap() {
                           </div>
                         </div>
 
-                        {/* Radios bands indicators */}
-                        <div className="flex flex-col gap-0.5 pl-1 border-l border-zinc-700/60">
+                        {/* Band tags */}
+                        <div className="flex flex-col gap-0.5 pl-1 border-l border-zinc-700/60 text-[8px] font-mono leading-tight text-zinc-400">
                           {node.radios.map((r, rIdx) => (
-                            <span key={`radio-band-${r.band}-${r.channel}-${rIdx}`} className="text-[8px] font-mono leading-tight text-zinc-400">
+                            <span key={`node-radio-${r.band}-${rIdx}`}>
                               {r.band.replace('GHz', 'G')}
                             </span>
                           ))}
@@ -1136,38 +1886,154 @@ export function HomeWifiMap() {
                   );
                 })}
 
-                {/* "Your Device" Visual Marker on Canvas */}
-                {myDevice && myDeviceNode && (
-                  <div
-                    className="absolute -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-auto cursor-pointer group"
-                    style={{ left: `${myDeviceNode.x + 8}%`, top: `${myDeviceNode.y + 12}%` }}
-                    onClick={() => setSelectedClientId(myDevice.id)}
-                    title="Your current device verified on mesh - Click to inspect"
-                  >
-                    {/* Pulsing Radar Ring Wave */}
-                    <div className="absolute -inset-2 rounded-2xl border-2 border-sky-400/50 animate-ping pointer-events-none" />
-                    <div className="relative px-3 py-2 rounded-xl bg-gradient-to-r from-sky-950/95 via-zinc-900 to-emerald-950/90 border-2 border-sky-400 text-white shadow-2xl flex items-center gap-2.5 transition-transform group-hover:scale-105">
-                      <div className="relative">
-                        <Laptop className="w-4 h-4 text-sky-300" />
-                        <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      </div>
-                      <div className="text-left font-mono">
-                        <div className="flex items-center gap-1.5 leading-tight">
-                          <span className="text-[10px] font-extrabold text-sky-300 tracking-tight">★ YOU (THIS DEVICE)</span>
-                          <span className="text-[9px] px-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">{myDevice.rttLatencyMs || 4}ms</span>
+                {/* =================================================== */}
+                {/* ALL IDENTIFIED NETWORK CLIENTS ON BLUEPRINT        */}
+                {/* =================================================== */}
+                {showClientPointers && displayedClients.map(client => {
+                  const pos = getClientPosition(client);
+                  const isSelected = selectedClientId === client.id;
+                  const isPinged = activePingClientId === client.id;
+                  const isDragging = draggingEntity?.type === 'client' && draggingEntity.id === client.id;
+                  const isSelf = client.isMyDevice || client.id === myDevice?.id;
+
+                  return (
+                    <div
+                      key={`marker-${client.id}`}
+                      onMouseDown={(e) => handleMapMouseDownClient(e, client.id)}
+                      onClick={() => handleTriggerActivePing(client)}
+                      className={cn(
+                        "absolute -translate-x-1/2 -translate-y-1/2 z-25 cursor-grab active:cursor-grabbing transition-transform group",
+                        isDragging && "scale-110 z-40",
+                        isSelected && "z-35",
+                        isPinged && "z-40"
+                      )}
+                      style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+                      title={`${client.userName} (${client.deviceHost}) - Click to run Active Ping`}
+                    >
+                      {/* Active Ping Sonar Pulse Ring */}
+                      {isPinged && (
+                        <div className="absolute -inset-3 rounded-2xl border-2 border-sky-400 animate-ping pointer-events-none" />
+                      )}
+
+                      {/* Device Card Badge */}
+                      <div className={cn(
+                        "relative p-2 rounded-xl flex items-center gap-2 border shadow-xl backdrop-blur-md transition-all select-none",
+                        isSelf 
+                          ? "bg-sky-950/90 border-sky-400 ring-2 ring-sky-500/50 shadow-sky-500/25"
+                          : isPinged
+                          ? "bg-sky-900/90 border-sky-400 ring-2 ring-sky-400"
+                          : client.internetPaused
+                          ? "bg-rose-950/80 border-rose-500/60 opacity-60"
+                          : "bg-zinc-900/90 hover:bg-zinc-800/90 border-zinc-700/80 hover:border-zinc-500"
+                      )}>
+                        {/* Device Icon + Vendor Badge */}
+                        <div className="flex flex-col items-center gap-1 shrink-0">
+                          <div className={cn(
+                            "w-7 h-7 rounded-lg flex items-center justify-center",
+                            isSelf ? "bg-sky-500/20 text-sky-300" : "bg-white/5 text-zinc-300"
+                          )}>
+                            {renderDeviceIcon(client.deviceCategory)}
+                          </div>
+                          {renderVendorBadge(client.vendor)}
                         </div>
-                        <span className="text-[9px] text-zinc-300 block leading-tight mt-0.5">
-                          {myDevice.deviceHost} · <strong className="text-white">{myDevice.ip}</strong>
-                        </span>
+
+                        {/* Device Info & Network Badges */}
+                        <div className="text-left font-mono">
+                          <div className="flex items-center gap-1.5 leading-tight">
+                            <span className={cn(
+                              "text-[11px] font-bold truncate max-w-[110px]",
+                              isSelf ? "text-sky-300 font-extrabold" : "text-white"
+                            )}>
+                              {client.deviceHost}
+                            </span>
+                            {isSelf && (
+                              <span className="text-[8px] font-bold px-1 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40">
+                                YOU
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1.5 text-[9px] text-zinc-400 mt-0.5">
+                            <span className="text-zinc-300 font-medium">{client.ip}</span>
+                            <span>·</span>
+                            <span className={cn(
+                              "px-1 rounded text-[8px]",
+                              client.band === '6GHz' ? "bg-purple-500/20 text-purple-300" :
+                              client.band === '5GHz' ? "bg-sky-500/20 text-sky-300" : "bg-amber-500/20 text-amber-300"
+                            )}>
+                              {client.band}
+                            </span>
+                          </div>
+
+                          {/* RSSI & Speed Dial */}
+                          <div className="flex items-center gap-2 text-[8px] text-zinc-400 mt-0.5">
+                            <div className="flex items-center gap-1">
+                              {renderRssiBars(client.rssiDbm)}
+                              <span className="text-zinc-300">{client.rssiDbm}dBm</span>
+                            </div>
+                            <span>·</span>
+                            <span className="text-emerald-400 font-semibold">↓{client.currentDownMbps}M</span>
+                          </div>
+                        </div>
+
+                        {/* Drag Handle & Active Ping Trigger */}
+                        <div className="flex flex-col items-center gap-1 pl-1 border-l border-zinc-700/60">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleTriggerActivePing(client);
+                            }}
+                            className={cn(
+                              "p-1 rounded hover:bg-white/10 transition cursor-pointer",
+                              isPinged ? "text-sky-400" : "text-zinc-400 hover:text-white"
+                            )}
+                            title="Active Ping telemetry"
+                          >
+                            <Radar className={cn("w-3.5 h-3.5", isPinged && "animate-spin")} />
+                          </button>
+                          <Move className="w-3 h-3 text-zinc-600 group-hover:text-zinc-400" title="Drag to move across rooms" />
+                        </div>
                       </div>
+
+                      {/* ACTIVE PING LATENCY TELEMETRY BUBBLE */}
+                      {isPinged && activePingData && (
+                        <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-zinc-950 text-white border-2 border-sky-400 rounded-xl p-2 px-3 shadow-2xl z-50 whitespace-nowrap animate-in fade-in zoom-in-95">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                            <div className="text-left font-mono">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-sky-300 font-extrabold">RTT PING:</span>
+                                <span className="text-xs text-white font-extrabold">{activePingData.rttLatencyMs} ms</span>
+                                <span className="text-[9px] text-emerald-400 font-bold">(0% Loss)</span>
+                              </div>
+                              <div className="text-[8px] text-zinc-400">
+                                Jitter ±{activePingData.jitterMs}ms · Echo from {client.ip}
+                              </div>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActivePingClientId(null);
+                              }}
+                              className="text-zinc-400 hover:text-white p-0.5 rounded ml-1"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                          {/* Triangle pointer downward */}
+                          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-zinc-950 border-r-2 border-b-2 border-sky-400 rotate-45" />
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
+                  );
+                })}
 
                 {/* Floating Map Hint */}
-                <div className="absolute bottom-3 left-4 bg-zinc-950/80 border border-zinc-800 rounded-lg px-2.5 py-1 text-[10px] text-zinc-400 font-mono z-10 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Interactive Map: Your device is accurately pinpointed on the home network. Drag nodes to reposition.</span>
+                <div className="absolute bottom-3 left-4 bg-zinc-950/90 border border-zinc-800 rounded-lg px-3 py-1.5 text-[10px] text-zinc-300 font-mono z-15 flex items-center gap-2 shadow-lg backdrop-blur-sm">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                  <span>
+                    Interactive Architectural Blueprint: Drag any device or AP to reposition across rooms. Click any device to trigger an Active Ping.
+                  </span>
                 </div>
               </div>
 
@@ -2647,101 +3513,212 @@ export function HomeWifiMap() {
       )}
 
       {/* ======================================================== */}
-      {/* DRAWER / MODAL: CLIENT DETAILS & ROAMING HISTORY         */}
+      {/* SIMPLE & PRECISE DEVICE INSPECTOR MODAL                  */}
       {/* ======================================================== */}
       {selectedClient && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-card border border-border p-6 shadow-2xl animate-in fade-in">
-            <div className="flex items-start justify-between mb-4">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-xl rounded-2xl bg-card border border-border p-6 shadow-2xl animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between pb-4 border-b border-border/80">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-accent/20 border border-accent/30 flex items-center justify-center text-accent font-bold">
-                  {selectedClient.isMyDevice ? "YOU" : selectedClient.avatar}
+                <div className={cn(
+                  "w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold shrink-0",
+                  selectedClient.isMyDevice ? "bg-sky-500/20 text-sky-300 border border-sky-500/40" : "bg-accent/20 text-accent border border-accent/30"
+                )}>
+                  {renderDeviceIcon(selectedClient.deviceCategory)}
                 </div>
+
                 <div>
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    {selectedClient.userName}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {renderVendorBadge(selectedClient.vendor)}
                     {selectedClient.isMyDevice && (
                       <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40">
                         ★ YOUR DEVICE
                       </span>
                     )}
+                    <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Online
+                    </span>
+                  </div>
+
+                  <h3 className="text-base font-bold text-white mt-1">
+                    {selectedClient.modelName || selectedClient.deviceHost}
                   </h3>
-                  <p className="text-xs text-zinc-400">{selectedClient.deviceHost} · {selectedClient.vendor}</p>
+                  <p className="text-xs text-zinc-400 font-mono">
+                    {selectedClient.userName} · Host: <strong className="text-zinc-200">{selectedClient.deviceHost}</strong>
+                  </p>
                 </div>
               </div>
 
               <button
                 onClick={() => setSelectedClientId(null)}
-                className="text-zinc-400 hover:text-white"
+                className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Quick Specs */}
-            <div className="grid grid-cols-2 gap-2 text-xs font-mono mb-4">
-              <div className="p-2.5 rounded-lg bg-white/5 border border-border">
-                <span className="text-zinc-500 text-[10px]">IP Address:</span>
-                <p className="text-white font-medium">{selectedClient.ip}</p>
+            {/* 3 Key Health & Performance Dials */}
+            <div className="grid grid-cols-3 gap-3 my-4">
+              <div className="p-3 rounded-xl bg-sky-500/10 border border-sky-500/25 flex flex-col items-center justify-center text-center">
+                <span className="text-[10px] font-mono text-zinc-400 uppercase">Ping (RTT)</span>
+                <p className="text-lg font-extrabold text-sky-300 font-mono mt-0.5">
+                  {selectedClient.rttLatencyMs || 2.4} ms
+                </p>
+                <span className="text-[9px] text-emerald-400 font-medium">0% Packet Loss</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-white/5 border border-border">
-                <span className="text-zinc-500 text-[10px]">MAC / OUI:</span>
-                <p className="text-zinc-300 truncate">{selectedClient.mac}</p>
+
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex flex-col items-center justify-center text-center">
+                <span className="text-[10px] font-mono text-zinc-400 uppercase">Signal RSSI</span>
+                <p className="text-lg font-extrabold text-emerald-400 font-mono mt-0.5">
+                  {selectedClient.rssiDbm} dBm
+                </p>
+                <span className="text-[9px] text-zinc-300 font-mono">SNR {selectedClient.snrDb} dB</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-white/5 border border-border">
-                <span className="text-zinc-500 text-[10px]">VLAN Network:</span>
-                <p className="text-emerald-400">{selectedClient.networkVlan}</p>
-              </div>
-              <div className="p-2.5 rounded-lg bg-white/5 border border-border">
-                <span className="text-zinc-500 text-[10px]">DHCP Lease:</span>
-                <p className="text-zinc-300">Expires in {selectedClient.dhcpLeaseExpires}</p>
+
+              <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/25 flex flex-col items-center justify-center text-center">
+                <span className="text-[10px] font-mono text-zinc-400 uppercase">Live Speed</span>
+                <p className="text-lg font-extrabold text-purple-300 font-mono mt-0.5">
+                  ↓{selectedClient.currentDownMbps}M
+                </p>
+                <span className="text-[9px] text-zinc-400 font-mono">PHY {selectedClient.txRateMbps}M</span>
               </div>
             </div>
 
-            {/* QoS Priority Selector */}
-            <div className="p-3 rounded-xl bg-white/5 border border-border text-xs mb-4">
-              <span className="font-semibold text-zinc-200 block mb-1.5">OpenWrt CAKE SQM Priority</span>
-              <div className="flex flex-wrap gap-1.5">
-                {(['High (Gaming/VoIP)', 'Streaming', 'Normal', 'Background'] as const).map(qos => (
-                  <button
-                    key={qos}
-                    onClick={() => handleSetQos(selectedClient.id, qos)}
-                    className={cn(
-                      "px-2.5 py-1 rounded text-xs transition cursor-pointer",
-                      selectedClient.qosPriority === qos
-                        ? "bg-accent/20 text-accent border border-accent/40 font-semibold"
-                        : "bg-white/5 text-zinc-400 hover:text-zinc-200 border border-border"
-                    )}
-                  >
-                    {qos}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Roaming History Log */}
-            <div>
-              <h4 className="text-xs font-semibold text-zinc-300 mb-2">
-                802.11k/v/r Fast Roaming Audit Log
+            {/* Precise Hardware & Radio Specifications */}
+            <div className="space-y-3 mb-4">
+              <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider font-mono">
+                Hardware & Radio Specifications
               </h4>
 
-              {selectedClient.roamingHistory.length > 0 ? (
-                <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
-                  {selectedClient.roamingHistory.map((ev, i) => (
-                    <div key={i} className="p-2.5 rounded-lg bg-white/5 border border-border text-xs">
-                      <div className="flex items-center justify-between font-mono text-[11px]">
-                        <span className="text-emerald-400 font-semibold">{ev.fromNode} ➔ {ev.toNode}</span>
-                        <span className="text-zinc-500">{ev.timestamp}</span>
-                      </div>
-                      <p className="text-zinc-400 text-[10px] mt-1">{ev.reason} ({ev.rssi} dBm)</p>
-                    </div>
+              <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                <div className="p-2.5 rounded-lg bg-white/5 border border-border">
+                  <span className="text-zinc-500 text-[10px] block">Hardware Chipset:</span>
+                  <p className="text-zinc-200 truncate">{selectedClient.hardwareChipset || 'Broadcom Dual-Band'}</p>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-white/5 border border-border">
+                  <span className="text-zinc-500 text-[10px] block">Wi-Fi Protocol & Band:</span>
+                  <p className="text-white font-medium">{selectedClient.band} · {selectedClient.wifiStandard}</p>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-white/5 border border-border">
+                  <span className="text-zinc-500 text-[10px] block">RF Channel & Width:</span>
+                  <p className="text-sky-300 font-medium">
+                    Ch {selectedClient.channelNumber ?? (selectedClient.band === '6GHz' ? 37 : selectedClient.band === '5GHz' ? 149 : 6)} ({selectedClient.channelWidthMhz ?? 80} MHz)
+                  </p>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-white/5 border border-border">
+                  <span className="text-zinc-500 text-[10px] block">MIMO Streams & Modulation:</span>
+                  <p className="text-zinc-200 truncate">{selectedClient.spatialStreams || '2x2 MU-MIMO'} · {selectedClient.phyMcs || 'MCS 11'}</p>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-white/5 border border-border">
+                  <span className="text-zinc-500 text-[10px] block">Connected Access Point:</span>
+                  <p className="text-emerald-400 font-medium truncate">
+                    {nodes.find(n => n.id === selectedClient.nodeId)?.name.split('(')[0] || 'Mesh Satellite'}
+                  </p>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-white/5 border border-border">
+                  <span className="text-zinc-500 text-[10px] block">Floor & Room Location:</span>
+                  <p className="text-zinc-200 truncate">{selectedClient.room} ({selectedClient.floor})</p>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-white/5 border border-border">
+                  <span className="text-zinc-500 text-[10px] block">Local IPv4 Address:</span>
+                  <p className="text-white font-medium">{selectedClient.ip}</p>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-white/5 border border-border">
+                  <span className="text-zinc-500 text-[10px] block">MAC Hardware Address:</span>
+                  <p className="text-zinc-300 truncate">{selectedClient.mac}</p>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-white/5 border border-border">
+                  <span className="text-zinc-500 text-[10px] block">Assigned Network VLAN:</span>
+                  <p className={selectedClient.networkVlan?.includes('Isolated') ? "text-amber-400" : "text-emerald-400"}>
+                    {selectedClient.networkVlan}
+                  </p>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-white/5 border border-border">
+                  <span className="text-zinc-500 text-[10px] block">DHCP Lease Duration:</span>
+                  <p className="text-zinc-300">Expires in {selectedClient.dhcpLeaseExpires}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Discovered Network Services & Open Ports */}
+            {selectedClient.openPorts && selectedClient.openPorts.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider font-mono mb-2">
+                  Discovered Network Services & Ports
+                </h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedClient.openPorts.map((p, pIdx) => (
+                    <span
+                      key={`port-${p.port}-${pIdx}`}
+                      className="px-2 py-1 rounded-md bg-white/5 border border-border text-[11px] font-mono text-zinc-200 flex items-center gap-1.5"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      <span className="font-semibold text-white">{p.service}</span>
+                      <span className="text-zinc-500">({p.port}/{p.proto})</span>
+                    </span>
                   ))}
                 </div>
-              ) : (
-                <p className="text-xs text-zinc-500 italic p-3 rounded-lg bg-white/5">
-                  Station has remained stably associated with its current access point.
-                </p>
-              )}
+              </div>
+            )}
+
+            {/* Simple 1-Click Quick Actions Toolbar */}
+            <div className="pt-4 border-t border-border flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => handleTriggerActivePing(selectedClient)}
+                className="flex-1 py-2 px-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-zinc-950 font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-sky-500/20"
+              >
+                <Radar className="w-4 h-4" />
+                <span>⚡ Active Ping</span>
+              </button>
+
+              <button
+                onClick={() => handleToggleInternetPause(selectedClient.id)}
+                className={cn(
+                  "py-2 px-3 rounded-xl border text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5",
+                  selectedClient.internetPaused
+                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+                    : "bg-rose-500/15 border-rose-500/30 text-rose-300 hover:bg-rose-500/25"
+                )}
+              >
+                {selectedClient.internetPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+                <span>{selectedClient.internetPaused ? "Resume Internet" : "Pause Internet"}</span>
+              </button>
+
+              <button
+                onClick={() => handleToggleQuarantine(selectedClient.id)}
+                className={cn(
+                  "py-2 px-3 rounded-xl border text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5",
+                  selectedClient.isQuarantined
+                    ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
+                    : "bg-white/5 border-border text-zinc-300 hover:bg-white/10"
+                )}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>{selectedClient.isQuarantined ? "Unquarantine" : "Quarantine VLAN"}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setRoamingClientId(selectedClient.id);
+                  setTargetRoamNodeId(nodes.find(n => n.id !== selectedClient.nodeId)?.id || '');
+                  setSelectedClientId(null);
+                }}
+                className="py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 border border-border text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5 text-accent" />
+                <span>Roam AP</span>
+              </button>
             </div>
           </div>
         </div>

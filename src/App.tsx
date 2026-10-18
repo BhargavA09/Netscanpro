@@ -6,27 +6,26 @@ import { NetworkAnalysis } from './components/NetworkAnalysis';
 import { CentralNetworkTracking } from './components/CentralNetworkTracking';
 import { NetworkNeighborhood } from './components/NetworkNeighborhood';
 import { SystemLogs } from './components/SystemLogs';
-import { ThreatAlertSystem } from './components/ThreatAlertSystem';
 import { GlobalSearch } from './components/GlobalSearch';
 import { fetchJson } from './lib/api';
-import { Bell, Menu, User, Terminal, ShieldAlert, Wifi } from 'lucide-react';
+import { Bell, Menu, User, Terminal, Wifi } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isUnderAttack, setIsUnderAttack] = useState(false);
-  const [alertCount, setAlertCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeStationsCount, setActiveStationsCount] = useState(15);
 
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        const data = await fetchJson<{ isUnderAttack: boolean; alertCount: number }>('/api/status');
-        setIsUnderAttack(data.isUnderAttack);
-        setAlertCount(data.alertCount);
+        const data = await fetchJson<{ alertCount?: number; totalClients?: number }>('/api/wifi/telemetry');
+        if (data && (data as any).clients) {
+          setActiveStationsCount((data as any).clients.length);
+        }
       } catch (error) {
-        // Silently handled by resilient API client fallback
+        // Handled gracefully
       }
     };
 
@@ -56,10 +55,8 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-bg overflow-hidden relative">
-      {/* Global Scanline Effect */}
-      <div className="fixed inset-0 pointer-events-none z-50 opacity-[0.03] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />
-      
-      <ThreatAlertSystem />
+      {/* Global Subtle Grid Background */}
+      <div className="fixed inset-0 pointer-events-none z-50 opacity-[0.02] bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:20px_20px]" />
 
       {/* Responsive Sidebar Navigation */}
       <Sidebar 
@@ -70,8 +67,8 @@ export default function App() {
       />
       
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Responsive Header */}
-        <header className="h-16 border-b border-border bg-card/50 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 lg:px-8 shrink-0 gap-3">
+        {/* Responsive Header: Residential Mesh Health HUD */}
+        <header className="h-16 border-b border-border bg-card/60 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 lg:px-8 shrink-0 gap-3">
           {/* Left: Mobile Toggle & Network Status */}
           <div className="flex items-center gap-3 min-w-0">
             <button 
@@ -83,85 +80,67 @@ export default function App() {
               <Menu className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center gap-2 text-zinc-500 min-w-0">
-              <span className="text-xs font-mono uppercase tracking-widest hidden sm:inline">Status:</span>
-              <div className="flex items-center gap-1.5">
-                <span className={cn(
-                  "w-2 h-2 rounded-full shrink-0 animate-pulse",
-                  isUnderAttack ? "bg-critical" : "bg-accent"
-                )} />
-                <span className={cn(
-                  "text-xs font-mono font-bold truncate",
-                  isUnderAttack ? "text-critical" : "text-accent"
-                )}>
-                  {isUnderAttack ? 'UNDER ATTACK' : 'OPERATIONAL'}
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0 ring-4 ring-emerald-500/20" />
+              <div className="flex items-baseline gap-2 truncate">
+                <span className="text-xs font-mono font-bold text-white tracking-tight">
+                  SENTINEL MESH: 4/4 APs ONLINE
+                </span>
+                <span className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  OPTIMAL HEALTH
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Center & Right: Search, Alerts & User Profile */}
-          <div className="flex items-center gap-3 sm:gap-4 md:gap-6 min-w-0">
-            <div className="relative flex-1 min-w-0">
+          {/* Center HUD: WAN Uplink & Active Stations */}
+          <div className="hidden md:flex items-center gap-4 text-xs font-mono">
+            <div className="flex items-center gap-1.5 text-zinc-400 bg-black/30 px-2.5 py-1 rounded-lg border border-border/80">
+              <span className="text-sky-400 font-semibold">WAN:</span>
+              <span className="text-zinc-200">1.0 Gbps Fiber (940M/940M)</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-zinc-400 bg-black/30 px-2.5 py-1 rounded-lg border border-border/80">
+              <span className="text-emerald-400 font-semibold">{activeStationsCount}</span>
+              <span className="text-zinc-300">Stations Connected</span>
+            </div>
+            <div className="hidden lg:flex items-center gap-1.5 text-zinc-400 bg-black/30 px-2.5 py-1 rounded-lg border border-border/80">
+              <span className="text-purple-400 font-semibold">Pi-hole:</span>
+              <span className="text-zinc-300">99.4% Clean · 1,840 Blocked</span>
+            </div>
+          </div>
+
+          {/* Right: Search, Logs Alert Bell & Household Profile */}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="relative flex-1 min-w-0 max-w-xs">
               <GlobalSearch onNavigate={(tab) => setActiveTab(tab)} />
             </div>
 
             <button 
               type="button"
-              onClick={() => setActiveTab('feed')}
-              className="relative p-2 text-zinc-400 hover:text-white transition-colors cursor-pointer shrink-0"
-              title="Threat Alerts"
+              onClick={() => setActiveTab('activity')}
+              className="relative p-2 text-zinc-400 hover:text-white transition-colors cursor-pointer shrink-0 rounded-lg hover:bg-white/5"
+              title="Network & System Logs"
             >
-              <Bell className="w-5 h-5" />
-              {alertCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-critical rounded-full border-2 border-card" />
-              )}
+              <Bell className="w-4 h-4" />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping" />
             </button>
 
             <div className="h-6 w-px bg-border hidden sm:block" />
 
-            {/* Developer Attribution Profile */}
-            <button 
-              type="button"
-              onClick={() => setActiveTab('architecture')}
-              className="flex items-center gap-2.5 hover:opacity-85 transition-opacity text-left cursor-pointer shrink-0"
-              title="View System Architecture & Developer Profile (Bhargav)"
+            {/* Household Admin Profile */}
+            <div 
+              className="flex items-center gap-2.5 text-left shrink-0 pl-1"
             >
               <div className="text-right hidden sm:block">
-                <p className="text-xs font-bold text-white font-mono leading-tight">Bhargav</p>
-                <p className="text-[10px] font-mono text-accent uppercase leading-tight">Lead Systems Architect</p>
+                <p className="text-xs font-bold text-white font-mono leading-tight">Alex Morgan</p>
+                <p className="text-[10px] font-mono text-zinc-400 leading-tight">Homeowner & Admin</p>
               </div>
-              <div className="w-8 h-8 rounded-lg bg-accent/20 border border-accent flex items-center justify-center shadow-[0_0_10px_rgba(0,255,65,0.2)] shrink-0">
-                <User className="w-4 h-4 text-accent" />
+              <div className="w-8 h-8 rounded-lg bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.2)] shrink-0 font-mono text-xs font-bold">
+                AM
               </div>
-            </button>
+            </div>
           </div>
         </header>
-
-        {/* Attack Alert Banner */}
-        <AnimatePresence>
-          {isUnderAttack && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="bg-critical/10 border-b border-critical/30 px-4 sm:px-8 py-2 flex items-center justify-between overflow-hidden"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <ShieldAlert className="w-4 h-4 text-critical animate-pulse shrink-0" />
-                <span className="text-xs font-bold text-critical uppercase tracking-wider truncate">
-                  CRITICAL ALERT: System experiencing volumetric intrusion attempt.
-                </span>
-              </div>
-              <button 
-                onClick={() => setActiveTab('activity')}
-                className="text-[10px] font-mono text-critical hover:underline uppercase shrink-0 ml-2"
-              >
-                View Logs
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Responsive Content Area */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 data-grid">

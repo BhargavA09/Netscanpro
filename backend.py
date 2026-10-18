@@ -336,6 +336,10 @@ WIFI_CLIENTS = [
         "band": "6GHz",
         "wifiStandard": "802.11ax (Wi-Fi 6)",
         "isMyDevice": True,
+        "floor": "ground",
+        "room": "Home Office & Lab",
+        "x": 68,
+        "y": 28,
         "detectedViaBrowser": True,
         "detectedOs": "macOS / Apple Silicon",
         "detectedBrowser": "Chrome / Safari",
@@ -373,6 +377,10 @@ WIFI_CLIENTS = [
         "vendor": "Apple, Inc.",
         "band": "5GHz",
         "wifiStandard": "802.11be (Wi-Fi 7)",
+        "floor": "ground",
+        "room": "Home Office & Lab",
+        "x": 80,
+        "y": 20,
         "rssiDbm": -46,
         "snrDb": 47,
         "signalQuality": "Excellent",
@@ -405,6 +413,10 @@ WIFI_CLIENTS = [
         "vendor": "Lenovo Group Ltd.",
         "band": "5GHz",
         "wifiStandard": "802.11ax (Wi-Fi 6)",
+        "floor": "ground",
+        "room": "Home Office & Lab",
+        "x": 86,
+        "y": 36,
         "rssiDbm": -48,
         "snrDb": 44,
         "signalQuality": "Excellent",
@@ -435,6 +447,10 @@ WIFI_CLIENTS = [
         "vendor": "Google LLC",
         "band": "6GHz",
         "wifiStandard": "802.11be (Wi-Fi 7)",
+        "floor": "ground",
+        "room": "Home Office & Lab",
+        "x": 62,
+        "y": 42,
         "rssiDbm": -44,
         "snrDb": 50,
         "signalQuality": "Excellent",
@@ -467,6 +483,10 @@ WIFI_CLIENTS = [
         "vendor": "Sony Corporation",
         "band": "5GHz",
         "wifiStandard": "802.11ax (Wi-Fi 6)",
+        "floor": "ground",
+        "room": "Living Room & Media Center",
+        "x": 16,
+        "y": 20,
         "rssiDbm": -47,
         "snrDb": 46,
         "signalQuality": "Excellent",
@@ -497,6 +517,10 @@ WIFI_CLIENTS = [
         "vendor": "Raspberry Pi Trading",
         "band": "2.4GHz",
         "wifiStandard": "802.11ax (Wi-Fi 6)",
+        "floor": "ground",
+        "room": "Living Room & Media Center",
+        "x": 38,
+        "y": 18,
         "rssiDbm": -38,
         "snrDb": 56,
         "signalQuality": "Excellent",
@@ -527,6 +551,10 @@ WIFI_CLIENTS = [
         "vendor": "Samsung Electronics",
         "band": "5GHz",
         "wifiStandard": "802.11ax (Wi-Fi 6)",
+        "floor": "ground",
+        "room": "Kitchen & Dining",
+        "x": 24,
+        "y": 74,
         "rssiDbm": -56,
         "snrDb": 38,
         "signalQuality": "Good",
@@ -557,6 +585,10 @@ WIFI_CLIENTS = [
         "vendor": "Sonos, Inc.",
         "band": "5GHz",
         "wifiStandard": "802.11ac (Wi-Fi 5)",
+        "floor": "ground",
+        "room": "Living Room & Media Center",
+        "x": 16,
+        "y": 34,
         "rssiDbm": -49,
         "snrDb": 43,
         "signalQuality": "Excellent",
@@ -587,6 +619,10 @@ WIFI_CLIENTS = [
         "vendor": "Sony Interactive Entertainment",
         "band": "5GHz",
         "wifiStandard": "802.11ax (Wi-Fi 6)",
+        "floor": "upper",
+        "room": "Gaming Lounge (Bedroom 2)",
+        "x": 76,
+        "y": 26,
         "rssiDbm": -48,
         "snrDb": 46,
         "signalQuality": "Excellent",
@@ -617,6 +653,10 @@ WIFI_CLIENTS = [
         "vendor": "Nintendo Co., Ltd.",
         "band": "5GHz",
         "wifiStandard": "802.11ac (Wi-Fi 5)",
+        "floor": "upper",
+        "room": "Gaming Lounge (Bedroom 2)",
+        "x": 86,
+        "y": 38,
         "rssiDbm": -55,
         "snrDb": 39,
         "signalQuality": "Good",
@@ -647,6 +687,10 @@ WIFI_CLIENTS = [
         "vendor": "Sonos, Inc.",
         "band": "5GHz",
         "wifiStandard": "802.11ax (Wi-Fi 6)",
+        "floor": "upper",
+        "room": "Master Bedroom Suite",
+        "x": 22,
+        "y": 28,
         "rssiDbm": -52,
         "snrDb": 42,
         "signalQuality": "Good",
@@ -677,6 +721,10 @@ WIFI_CLIENTS = [
         "vendor": "Nanit Inc.",
         "band": "2.4GHz",
         "wifiStandard": "802.11ax (Wi-Fi 6)",
+        "floor": "upper",
+        "room": "Nursery & Baby Room",
+        "x": 24,
+        "y": 74,
         "rssiDbm": -53,
         "snrDb": 40,
         "signalQuality": "Good",
@@ -707,6 +755,10 @@ WIFI_CLIENTS = [
         "vendor": "Tesla Motors, Inc.",
         "band": "2.4GHz",
         "wifiStandard": "802.11ax (Wi-Fi 6)",
+        "floor": "outdoor",
+        "room": "Garage & EV Bay",
+        "x": 26,
+        "y": 48,
         "rssiDbm": -59,
         "snrDb": 35,
         "signalQuality": "Good",
@@ -739,6 +791,10 @@ WIFI_CLIENTS = [
         "vendor": "Ring LLC / Amazon",
         "band": "2.4GHz",
         "wifiStandard": "802.11ax (Wi-Fi 6)",
+        "floor": "outdoor",
+        "room": "Backyard Patio & Garden",
+        "x": 82,
+        "y": 72,
         "rssiDbm": -64,
         "snrDb": 30,
         "signalQuality": "Fair",
@@ -769,6 +825,10 @@ WIFI_CLIENTS = [
         "vendor": "Chamberlain Group",
         "band": "2.4GHz",
         "wifiStandard": "802.11ax (Wi-Fi 6)",
+        "floor": "outdoor",
+        "room": "Garage & EV Bay",
+        "x": 26,
+        "y": 20,
         "rssiDbm": -68,
         "snrDb": 26,
         "signalQuality": "Fair",
@@ -787,6 +847,14 @@ WIFI_CLIENTS = [
         "lastActivity": "Idle (Door closed, secure sensor poll)"
     }
 ]
+
+# Apply precision hardware & network telemetry to WIFI_CLIENTS
+PRECISION_MAP = {'cli-1': {'modelName': 'MacBook Pro 16" (Apple M1 Pro, 32GB RAM, Model A2485)', 'hardwareChipset': 'Broadcom BCM4387 Wi-Fi 6E (2x2 MIMO, 160MHz)', 'channelNumber': 37, 'channelWidthMhz': 160, 'spatialStreams': '2x2 MU-MIMO', 'phyMcs': 'MCS 11 (HE160, 1024-QAM, GI 0.8µs)', 'noiseFloorDbm': -94, 'ipv6Address': '2600:1700:8450:b10:44a:b2ff:fe19:9241', 'roamingProtocols': ['802.11k (RRM)', '802.11v (BTM)', '802.11r (FT-PSK)', '802.11w (PMF Required)'], 'powerSaveMode': 'Active (MIMO Power Save Off)', 'openPorts': [{'port': 22, 'proto': 'tcp', 'service': 'SSH (OpenSSH 9.6)', 'state': 'open'}, {'port': 7000, 'proto': 'tcp', 'service': 'AirPlay 2 Mirroring Receiver', 'state': 'open'}, {'port': 5000, 'proto': 'tcp', 'service': 'AirPlay Audio / Media Renderer', 'state': 'open'}, {'port': 3000, 'proto': 'tcp', 'service': 'Vite Dev Server (Port 3000)', 'state': 'open'}], 'mdnsServices': ['_airplay._tcp.local', '_raop._tcp.local', '_ssh._tcp.local', '_companion-link._tcp.local']}, 'cli-2': {'modelName': 'iPhone 16 Pro (Apple A18 Pro, 256GB, Model A3083)', 'hardwareChipset': 'Broadcom BCM4390 Wi-Fi 7 (2x2 MIMO, 160MHz)', 'channelNumber': 149, 'channelWidthMhz': 160, 'spatialStreams': '2x2 MU-MIMO', 'phyMcs': 'MCS 11 (HE160, 1024-QAM, GI 0.8µs)', 'noiseFloorDbm': -95, 'ipv6Address': '2600:1700:8450:b10:149c:72ff:fe81:7209', 'roamingProtocols': ['802.11k (RRM)', '802.11v (BTM)', '802.11r (FT-PSK)', '802.11w (PMF)'], 'powerSaveMode': 'WMM U-APSD Power Save', 'openPorts': [{'port': 62078, 'proto': 'tcp', 'service': 'Apple MobileSync / Lockdown Daemon', 'state': 'open'}, {'port': 5353, 'proto': 'udp', 'service': 'Apple mDNS Responder', 'state': 'open'}], 'mdnsServices': ['_apple-mobdev2._tcp.local', '_airplay._tcp.local', '_companion-link._tcp.local']}, 'cli-3': {'modelName': 'ThinkPad X1 Carbon Gen 11 (Intel Core i7-1365U, 32GB RAM)', 'hardwareChipset': 'Intel Wi-Fi 6E AX211 160MHz (M.2 2230, vPro)', 'channelNumber': 149, 'channelWidthMhz': 160, 'spatialStreams': '2x2 MU-MIMO', 'phyMcs': 'MCS 11 (HE160, 1024-QAM, GI 0.8µs)', 'noiseFloorDbm': -93, 'ipv6Address': '2600:1700:8450:b10:56ee:75ff:fea8:3c90', 'roamingProtocols': ['802.11k (RRM)', '802.11v (BTM)', '802.11r (FT-PSK)', '802.11w (PMF)'], 'powerSaveMode': 'Active (MIMO Power Save Off)', 'openPorts': [{'port': 135, 'proto': 'tcp', 'service': 'Microsoft RPC Endpoint Mapper', 'state': 'open'}, {'port': 445, 'proto': 'tcp', 'service': 'Microsoft SMB Directory Service', 'state': 'open'}, {'port': 3389, 'proto': 'tcp', 'service': 'Windows Remote Desktop (RDP)', 'state': 'open'}], 'mdnsServices': ['_workstation._tcp.local', '_smb._tcp.local']}, 'cli-4': {'modelName': 'Google Pixel 9 Pro Fold (Google Tensor G4, 512GB, Model G10)', 'hardwareChipset': 'Qualcomm FastConnect 7800 Wi-Fi 7 (320MHz HBS)', 'channelNumber': 149, 'channelWidthMhz': 160, 'spatialStreams': '2x2 MU-MIMO', 'phyMcs': 'MCS 11 (EHT160, 4096-QAM)', 'noiseFloorDbm': -96, 'ipv6Address': '2600:1700:8450:b10:f6f5:dbff:fe11:2488', 'roamingProtocols': ['802.11k (RRM)', '802.11v (BTM)', '802.11r (FT)', '802.11w (PMF)'], 'powerSaveMode': 'WMM U-APSD Power Save', 'openPorts': [{'port': 5555, 'proto': 'tcp', 'service': 'Android Wireless Debug (ADB TLS)', 'state': 'open'}, {'port': 5353, 'proto': 'udp', 'service': 'mDNS Responder', 'state': 'open'}], 'mdnsServices': ['_googlecast._tcp.local', '_adb-tls-connect._tcp.local']}, 'cli-5': {'modelName': 'Sony Bravia XR-75A80L 4K HDR OLED (MediaTek MT5895, Android TV 12)', 'hardwareChipset': 'MediaTek MT7921AU Dual-Band Wi-Fi 6 (2x2 MIMO)', 'channelNumber': 36, 'channelWidthMhz': 80, 'spatialStreams': '2x2 MU-MIMO', 'phyMcs': 'MCS 9 (HE80, 1024-QAM)', 'noiseFloorDbm': -95, 'ipv6Address': '2600:1700:8450:b10:fc0f:e6ff:fe19:4211', 'roamingProtocols': ['802.11k (RRM)', '802.11v (BTM)'], 'powerSaveMode': 'Active (Wake-on-WLAN Enabled)', 'openPorts': [{'port': 80, 'proto': 'tcp', 'service': 'Sony Bravia Simple IP Control REST', 'state': 'open'}, {'port': 8008, 'proto': 'tcp', 'service': 'Google Cast V2 Discovery Endpoint', 'state': 'open'}, {'port': 8009, 'proto': 'tcp', 'service': 'Google Cast TLS Protocol', 'state': 'open'}, {'port': 20060, 'proto': 'tcp', 'service': 'Sony IRCC Audio/Video API', 'state': 'open'}], 'mdnsServices': ['_googlecast._tcp.local', '_bravia-control._tcp.local', '_airplay._tcp.local']}, 'cli-6': {'modelName': 'Home Assistant Green (Rockchip RK3566, 4GB RAM, SkyConnect Zigbee)', 'hardwareChipset': 'Realtek RTL8211F Gigabit Ethernet / Cat6a PoE', 'channelNumber': 0, 'channelWidthMhz': 0, 'spatialStreams': '1Gbps Full-Duplex Wired', 'phyMcs': 'Gigabit IEEE 802.3ab (Wired Cat6a)', 'noiseFloorDbm': -100, 'ipv6Address': '2600:1700:8450:b10:982c:bcff:fe22:9011', 'roamingProtocols': ['IEEE 802.3 Ethernet Backhaul'], 'powerSaveMode': 'Continuous Host Power (24/7 Smart Home Hub)', 'openPorts': [{'port': 8123, 'proto': 'tcp', 'service': 'Home Assistant Web UI (HTTP/WS)', 'state': 'open'}, {'port': 1883, 'proto': 'tcp', 'service': 'Eclipse Mosquitto MQTT Broker', 'state': 'open'}, {'port': 6053, 'proto': 'tcp', 'service': 'ESPHome Native API Server', 'state': 'open'}, {'port': 5353, 'proto': 'udp', 'service': 'Zeroconf mDNS Advertiser', 'state': 'open'}], 'mdnsServices': ['_home-assistant._tcp.local', '_mqtt._tcp.local', '_esphome._tcp.local']}, 'cli-7': {'modelName': 'Samsung Galaxy S24 Ultra SM-S928U1 (Snapdragon 8 Gen 3, 512GB)', 'hardwareChipset': 'Qualcomm FastConnect 7800 Wi-Fi 7 (HBS 320MHz)', 'channelNumber': 36, 'channelWidthMhz': 80, 'spatialStreams': '2x2 MU-MIMO', 'phyMcs': 'MCS 11 (HE80, 1024-QAM)', 'noiseFloorDbm': -94, 'ipv6Address': '2600:1700:8450:b10:c493:d9ff:fe40:8871', 'roamingProtocols': ['802.11k (RRM)', '802.11v (BTM)', '802.11r (FT)', '802.11w (PMF)'], 'powerSaveMode': 'WMM U-APSD Power Save', 'openPorts': [{'port': 7236, 'proto': 'tcp', 'service': 'Samsung Smart View / Miracast Display', 'state': 'open'}, {'port': 8200, 'proto': 'tcp', 'service': 'Samsung Quick Share (Nearby Share)', 'state': 'open'}], 'mdnsServices': ['_googlecast._tcp.local', '_nearby-share._tcp.local']}, 'cli-8': {'modelName': 'Sonos Beam Gen 2 (Dolby Atmos, Model S31, HDMI eARC)', 'hardwareChipset': 'Cypress CYW43455 Dual-Band Wi-Fi 5 (802.11ac)', 'channelNumber': 36, 'channelWidthMhz': 40, 'spatialStreams': '1x1 SISO', 'phyMcs': 'MCS 9 (VHT40, 256-QAM)', 'noiseFloorDbm': -96, 'ipv6Address': '2600:1700:8450:b10:48a6:b8ff:fe21:3901', 'roamingProtocols': ['802.11k (RRM)', 'SonosNet 2.0 Mesh'], 'powerSaveMode': 'Active WMM Low Power Mode', 'openPorts': [{'port': 1400, 'proto': 'tcp', 'service': 'Sonos Universal Audio Daemon (UPnP)', 'state': 'open'}, {'port': 1443, 'proto': 'tcp', 'service': 'Sonos Control TLS API', 'state': 'open'}, {'port': 7000, 'proto': 'tcp', 'service': 'Apple AirPlay 2 Audio Stream Endpoint', 'state': 'open'}], 'mdnsServices': ['_sonos._tcp.local', '_airplay._tcp.local', '_raop._tcp.local', '_spotify-connect._tcp.local']}, 'cli-9': {'modelName': 'Sony PlayStation 5 (CFI-1215A, AMD Oberon 8-Core Zen 2, 825GB SSD)', 'hardwareChipset': 'Foxconn / Sony J20H100 Wi-Fi 6 (2x2 MIMO 80MHz)', 'channelNumber': 44, 'channelWidthMhz': 80, 'spatialStreams': '2x2 MU-MIMO', 'phyMcs': 'MCS 11 (HE80, 1024-QAM)', 'noiseFloorDbm': -95, 'ipv6Address': '2600:1700:8450:b10:ac67:84ff:fe98:2301', 'roamingProtocols': ['802.11k (RRM)', '802.11v (BTM)', '802.11w (PMF)'], 'powerSaveMode': 'Active (Rest Mode Background Download)', 'openPorts': [{'port': 9295, 'proto': 'tcp', 'service': 'PlayStation Network Remote Play Protocol', 'state': 'open'}, {'port': 9296, 'proto': 'udp', 'service': 'PSN Voice Chat RTP Audio Stream', 'state': 'open'}, {'port': 987, 'proto': 'udp', 'service': 'PS5 Wake-on-LAN Broadcast Target', 'state': 'open'}], 'mdnsServices': ['_psn-remoteplay._tcp.local']}, 'cli-10': {'modelName': 'Nintendo Switch OLED Model (HEG-001, Nvidia Tegra X1+ T210B01)', 'hardwareChipset': 'Broadcom BCM4356 Dual-Band 2x2 Wi-Fi 5 (802.11ac)', 'channelNumber': 44, 'channelWidthMhz': 80, 'spatialStreams': '2x2 MU-MIMO', 'phyMcs': 'MCS 9 (VHT80, 256-QAM)', 'noiseFloorDbm': -94, 'ipv6Address': '2600:1700:8450:b10:98b6:e9ff:fe44:1102', 'roamingProtocols': ['802.11k (RRM)'], 'powerSaveMode': 'Nintendo Sleep Mode PS-Poll', 'openPorts': [{'port': 5353, 'proto': 'udp', 'service': 'Nintendo eShop LAN Discovery Endpoint', 'state': 'open'}], 'mdnsServices': ['_nintendo-switch._tcp.local']}, 'cli-11': {'modelName': 'Sonos Era 300 Spatial Audio Speaker (Model S39, 6 Class-D Amplifiers)', 'hardwareChipset': 'Synaptics VideoSmart VS680 / Wi-Fi 6 (2x2 MIMO 80MHz)', 'channelNumber': 44, 'channelWidthMhz': 80, 'spatialStreams': '2x2 MU-MIMO', 'phyMcs': 'MCS 11 (HE80, 1024-QAM)', 'noiseFloorDbm': -96, 'ipv6Address': '2600:1700:8450:b10:542a:1bff:fe32:8819', 'roamingProtocols': ['802.11k (RRM)', '802.11v (BTM)'], 'powerSaveMode': 'Active WMM Low Power Mode', 'openPorts': [{'port': 1400, 'proto': 'tcp', 'service': 'Sonos Universal Audio Protocol (UPnP)', 'state': 'open'}, {'port': 7000, 'proto': 'tcp', 'service': 'Apple AirPlay 2 Spatial Audio (Dolby)', 'state': 'open'}], 'mdnsServices': ['_sonos._tcp.local', '_airplay._tcp.local', '_spotify-connect._tcp.local']}, 'cli-12': {'modelName': 'Nanit Pro Smart Baby Monitor & HD Camera (Model N301, 1080p Video)', 'hardwareChipset': 'Ambarella S2L SoC / Broadcom BCM43438 Wi-Fi 4 (2.4GHz)', 'channelNumber': 11, 'channelWidthMhz': 20, 'spatialStreams': '1x1 SISO', 'phyMcs': 'MCS 7 (HT20, 64-QAM, GI 0.4µs)', 'noiseFloorDbm': -97, 'ipv6Address': '2600:1700:8450:b10:3c71:bfff:fe65:2198', 'roamingProtocols': ['802.11k (RRM)'], 'powerSaveMode': 'Continuous 24/7 Low-Latency Streaming', 'openPorts': [{'port': 554, 'proto': 'tcp', 'service': 'RTSP Encrypted Video Stream (H.264/AAC)', 'state': 'open'}, {'port': 8883, 'proto': 'tcp', 'service': 'Nanit Cloud Telemetry (TLS MQTT Client)', 'state': 'open'}], 'mdnsServices': ['_nanit._tcp.local', '_rtsp._tcp.local']}, 'cli-13': {'modelName': 'Tesla Model Y Long Range AWD (2024 MCU3 AMD Ryzen, HW4 FSD)', 'hardwareChipset': 'LG Innotek Automotive Grade Dual-Band Wi-Fi 6 (2x2 MIMO)', 'channelNumber': 6, 'channelWidthMhz': 20, 'spatialStreams': '2x2 MU-MIMO', 'phyMcs': 'MCS 7 (HE20, 64-QAM)', 'noiseFloorDbm': -92, 'ipv6Address': '2600:1700:8450:b10:4c65:a8ff:fe21:9410', 'roamingProtocols': ['802.11k (RRM)', '802.11v (BTM)'], 'powerSaveMode': 'Vehicle Sentry Mode Active / Sleep Poll', 'openPorts': [{'port': 443, 'proto': 'tcp', 'service': 'Tesla Vehicle Telemetry / Fleet API', 'state': 'open'}, {'port': 4430, 'proto': 'tcp', 'service': 'Tesla Local Diagnostics & Telematics', 'state': 'open'}], 'mdnsServices': ['_tesla-vehicle._tcp.local']}, 'cli-14': {'modelName': 'Amazon Ring Floodlight Cam Wired Pro (Model 5E62E9, 3D Motion Radar)', 'hardwareChipset': 'Qualcomm Atheros QCA9377 Dual-Band 802.11ac (1x1 SISO)', 'channelNumber': 100, 'channelWidthMhz': 80, 'spatialStreams': '1x1 SISO', 'phyMcs': 'MCS 7 (VHT80, 64-QAM)', 'noiseFloorDbm': -95, 'ipv6Address': '2600:1700:8450:b10:5810:8cff:fe90:3412', 'roamingProtocols': ['802.11k (RRM)'], 'powerSaveMode': 'PIR Motion Trigger Sleep Mode', 'openPorts': [{'port': 8554, 'proto': 'tcp', 'service': 'Ring Two-Way Live Video Protocol', 'state': 'open'}, {'port': 123, 'proto': 'udp', 'service': 'NTP Network Time Sync Client', 'state': 'open'}], 'mdnsServices': ['_ring._tcp.local']}, 'cli-15': {'modelName': 'Chamberlain myQ Smart Garage Hub & Opener (Model G0401-ES, Security+ 2.0)', 'hardwareChipset': 'Espressif ESP32-WROOM-32E (2.4GHz 802.11b/g/n IoT)', 'channelNumber': 6, 'channelWidthMhz': 20, 'spatialStreams': '1x1 SISO', 'phyMcs': 'MCS 7 (HT20, 64-QAM)', 'noiseFloorDbm': -94, 'ipv6Address': '2600:1700:8450:b10:702c:1fff:fe88:5120', 'roamingProtocols': ['802.11 Legacy Power Save'], 'powerSaveMode': 'DTIM 3 IoT Low Power Standby', 'openPorts': [{'port': 8883, 'proto': 'tcp', 'service': 'Chamberlain myQ Cloud MQTT TLS', 'state': 'open'}], 'mdnsServices': ['_myq._tcp.local']}}
+
+for client in WIFI_CLIENTS:
+    cid = client.get("id")
+    if cid in PRECISION_MAP:
+        client.update(PRECISION_MAP[cid])
 
 # ==========================================
 # 24-HOUR DEVICE HISTORY TIMELINE STORE
@@ -1923,6 +1991,77 @@ class PythonApiHandler(BaseHTTPRequestHandler):
 
             return self.reply_json(200, {"success": True, "qosPriority": qos, "message": f"QoS set to {qos}"})
 
+        # 7.1 ACTIVE PING SIMULATOR & TELEMETRY
+        if "/api/wifi/clients/" in path and path.endswith("/ping"):
+            client_id = path.split("/")[4]
+            client = next((c for c in WIFI_CLIENTS if c["id"] == client_id), None)
+            if not client:
+                return self.reply_json(404, {"error": "Client not found"})
+
+            node = next((n for n in WIFI_NODES if n["id"] == client["nodeId"]), WIFI_NODES[0])
+            base_ping = 3.5 if client.get("band") == "6GHz" else 5.2 if client.get("band") == "5GHz" else 11.0
+            jitter = round(random.uniform(0.2, 1.4), 2)
+            measured_rtt = round(base_ping + random.uniform(-0.8, 1.8), 1)
+            
+            add_log(
+                "INFO",
+                "client_activity",
+                f"Active RTT ping telemetry query for {client['deviceHost']} ({client['ip']}) on {node['name']}.",
+                "Python ICMP & ARP Radar",
+                f"RTT: {measured_rtt}ms · Jitter: {jitter}ms · Packet Loss: 0% · Band: {client['band']} ({client['wifiStandard']})",
+                client_id=client["id"],
+                node_id=node["id"],
+                device_host=client["deviceHost"]
+            )
+            return self.reply_json(200, {
+                "success": True,
+                "clientId": client["id"],
+                "ip": client["ip"],
+                "deviceHost": client["deviceHost"],
+                "connectedNode": node["name"],
+                "rttLatencyMs": measured_rtt,
+                "jitterMs": jitter,
+                "packetLossPercent": 0.0,
+                "band": client["band"],
+                "rssiDbm": client["rssiDbm"],
+                "timestamp": datetime.datetime.now().strftime("%H:%M:%S")
+            })
+
+        # 7.2 CLIENT POSITION MOVE & ROOM UPDATE
+        if "/api/wifi/clients/" in path and path.endswith("/move"):
+            client_id = path.split("/")[4]
+            client = next((c for c in WIFI_CLIENTS if c["id"] == client_id), None)
+            if not client:
+                return self.reply_json(404, {"error": "Client not found"})
+
+            if "x" in body: client["x"] = body["x"]
+            if "y" in body: client["y"] = body["y"]
+            if "floor" in body: client["floor"] = body["floor"]
+            if "room" in body: client["room"] = body["room"]
+
+            add_log("INFO", "client_activity", f"Updated floor plan position for {client['deviceHost']}: {client.get('room')} ({client.get('x')}%, {client.get('y')}%)", "Floorplan Engine", client_id=client_id)
+            return self.reply_json(200, {"success": True, "client": client})
+
+        # 7.3 TOGGLE IOT QUARANTINE (VLAN ISOLATION)
+        if "/api/wifi/clients/" in path and path.endswith("/quarantine"):
+            client_id = path.split("/")[4]
+            client = next((c for c in WIFI_CLIENTS if c["id"] == client_id), None)
+            if not client:
+                return self.reply_json(404, {"error": "Client not found"})
+
+            client["isQuarantined"] = not client.get("isQuarantined", False)
+            if client["isQuarantined"]:
+                client["networkVlan"] = "IoT Isolated (VLAN 20)"
+                msg = f"Device {client['deviceHost']} ({client['ip']}) moved to Isolated Sandbox VLAN 20."
+                level = "WARN"
+            else:
+                client["networkVlan"] = "Main LAN (VLAN 1)"
+                msg = f"Device {client['deviceHost']} restored to Main LAN (VLAN 1)."
+                level = "INFO"
+
+            add_log(level, "security_firewall", msg, "OpenWrt nftables VLAN", client_id=client_id)
+            return self.reply_json(200, {"success": True, "isQuarantined": client["isQuarantined"], "vlan": client["networkVlan"]})
+
         # 8. POST LOG CUSTOM EVENT
         if path == "/api/wifi/logs":
             level = body.get("level", "INFO")
@@ -2113,7 +2252,7 @@ class PythonApiHandler(BaseHTTPRequestHandler):
         # Update client device placement (x, y, floor, room)
         if "/api/wifi/clients/" in path:
             client_id = path.split("/")[4]
-            client = next((c for c in CLIENT_USERS if c["id"] == client_id), None)
+            client = next((c for c in WIFI_CLIENTS if c["id"] == client_id), None)
             if not client:
                 return self.reply_json(404, {"error": "Client device not found"})
 

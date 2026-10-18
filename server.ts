@@ -3700,6 +3700,72 @@ async function startServer() {
     });
   });
 
+  // POST Active Ping client device (simulated RTT telemetry & audit)
+  app.post("/api/wifi/clients/:id/ping", (req, res) => {
+    const { id } = req.params;
+    const client = wifiClients.find(c => c.id === id);
+    if (!client) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    const node = wifiNodes.find(n => n.id === client.nodeId) || wifiNodes[0];
+    const basePing = client.band === '6GHz' ? 3.5 : client.band === '5GHz' ? 5.2 : 11.0;
+    const jitter = Math.round((Math.random() * 1.2 + 0.3) * 10) / 10;
+    const measuredRtt = Math.round((basePing + (Math.random() * 2 - 0.8)) * 10) / 10;
+
+    res.json({
+      success: true,
+      clientId: client.id,
+      ip: client.ip,
+      deviceHost: client.deviceHost,
+      connectedNode: node.name,
+      rttLatencyMs: measuredRtt,
+      jitterMs: jitter,
+      packetLossPercent: 0.0,
+      band: client.band,
+      rssiDbm: client.rssiDbm,
+      timestamp: new Date().toLocaleTimeString()
+    });
+  });
+
+  // POST Move client device coordinates (x, y, floor, room)
+  app.post("/api/wifi/clients/:id/move", (req, res) => {
+    const { id } = req.params;
+    const { x, y, floor, room } = req.body || {};
+    const client = wifiClients.find(c => c.id === id);
+    if (!client) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    if (x !== undefined) client.x = x;
+    if (y !== undefined) client.y = y;
+    if (floor !== undefined) client.floor = floor;
+    if (room !== undefined) client.room = room;
+
+    res.json({ success: true, client });
+  });
+
+  // POST Quarantine client device (VLAN 20 isolation)
+  app.post("/api/wifi/clients/:id/quarantine", (req, res) => {
+    const { id } = req.params;
+    const client = wifiClients.find(c => c.id === id);
+    if (!client) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    const isQuarantined = client.networkVlan !== 'IoT Isolated (VLAN 20)';
+    client.networkVlan = isQuarantined ? 'IoT Isolated (VLAN 20)' : 'Main LAN (VLAN 1)';
+
+    res.json({
+      success: true,
+      isQuarantined,
+      vlan: client.networkVlan,
+      message: isQuarantined
+        ? `Quarantined ${client.deviceHost} to isolated IoT VLAN 20.`
+        : `Restored ${client.deviceHost} to Main LAN (VLAN 1).`
+    });
+  });
+
   // --- NETWORK DISCOVERY SCAN ENDPOINTS (arping & nmap engine) ---
   const buildDiscoveryDevicesFallback = (): NetworkDiscoveryDevice[] => {
     const devices: NetworkDiscoveryDevice[] = [];

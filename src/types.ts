@@ -415,6 +415,13 @@ export interface WifiClientRoamingEvent {
   rssi: number;
 }
 
+export interface DevicePortService {
+  port: number;
+  proto: 'tcp' | 'udp';
+  service: string;
+  state: 'open' | 'filtered';
+}
+
 export interface WifiClientUser {
   id: string;
   nodeId: string;
@@ -454,6 +461,19 @@ export interface WifiClientUser {
   room?: string;
   x?: number;
   y?: number;
+  // Precision hardware and network telemetry
+  modelName?: string;
+  hardwareChipset?: string;
+  channelNumber?: number;
+  channelWidthMhz?: number;
+  spatialStreams?: string;
+  phyMcs?: string;
+  noiseFloorDbm?: number;
+  ipv6Address?: string;
+  roamingProtocols?: string[];
+  powerSaveMode?: string;
+  openPorts?: DevicePortService[];
+  mdnsServices?: string[];
 }
 
 export interface OpenSourceRepo {
