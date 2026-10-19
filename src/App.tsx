@@ -171,7 +171,7 @@ export default function App() {
                   {activeTab === 'dashboard' && 'Overview Dashboard'}
                   {activeTab === 'wifimap' && 'Home Wi-Fi Mesh & Floorplan Topology'}
                   {activeTab === 'network' && 'Device Discovery & Reconnaissance (ARPing + Nmap)'}
-                  {activeTab === 'tracking' && 'Deep Packet Inspection (DPI) & Protocol Anomaly Telemetry'}
+                  {activeTab === 'tracking' && 'Wireshark PCAP Capture & Deep Packet Inspection (DPI)'}
                   {activeTab === 'neighborhood' && 'Zero-Trust Device & User Access Control'}
                   {activeTab === 'activity' && 'Network Event Logs & Universal System Audit'}
                 </h2>
@@ -180,7 +180,7 @@ export default function App() {
                   {activeTab === 'dashboard' && 'Live residential mesh topology status, WAN uplink telemetry, connected stations count, and DPI anomaly overview.'}
                   {activeTab === 'wifimap' && 'Multi-band 2.4/5/6GHz access points, interactive floorplan placement, mesh backhauls, client roaming handoffs, and Cake SQM QoS.'}
                   {activeTab === 'network' && 'Hybrid Layer-2 ARPing and Layer-4 Nmap scanner: active host discovery, MAC vendor resolution, and open port profiling.'}
-                  {activeTab === 'tracking' && 'Real-time wire packet frame dissector, DNS resolution hop-by-hop traceroute, and Fourier spectral anomaly analysis.'}
+                  {activeTab === 'tracking' && 'Real-time 3-pane Wireshark packet capture dissector, live BPF display filters, payload hex dump byte inspector, TCP stream reassembly, and PCAP export.'}
                   {activeTab === 'neighborhood' && 'Household user roles (Homeowner, Family, Smart Home IoT, Guests), device quarantine, VLAN isolation, and speed limits.'}
                   {activeTab === 'activity' && 'Universal system events: DAWN roaming steers, DHCP leases, Pi-hole DNS sinkholes, and OpenWrt nftables firewall drops.'}
                 </p>

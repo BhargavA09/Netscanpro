@@ -26,7 +26,7 @@ const navItems = [
   { id: 'threats', label: 'SOC Threat Intel & IDS', icon: ShieldAlert },
   { id: 'dashboard', label: 'Overview Dashboard', icon: LayoutDashboard },
   { id: 'wifimap', label: 'Wi-Fi Mesh & Floorplan', icon: Wifi },
-  { id: 'tracking', label: 'Deep Packet Inspection (DPI)', icon: Radio },
+  { id: 'tracking', label: 'Wireshark PCAP & DPI', icon: Radio },
   { id: 'neighborhood', label: 'Zero-Trust Access Control', icon: Users },
   { id: 'activity', label: 'System & Security Logs', icon: Activity },
 ];
