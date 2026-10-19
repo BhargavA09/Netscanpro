@@ -73,6 +73,7 @@ import {
   WifiEventLogEntry,
   PythonBackendStatus
 } from '../types';
+import { WiresharkNmapInspector } from './WiresharkNmapInspector';
 
 export function HomeWifiMap() {
   const [telemetry, setTelemetry] = useState<WifiMeshTelemetryResponse | null>(null);
@@ -143,6 +144,20 @@ export function HomeWifiMap() {
   // Roam modal / action
   const [roamingClientId, setRoamingClientId] = useState<string | null>(null);
   const [targetRoamNodeId, setTargetRoamNodeId] = useState<string>('');
+
+  // Active IEEE 802.11k/v/r Client Roaming Handoff Animation State
+  const [activeHandoff, setActiveHandoff] = useState<{
+    clientId: string;
+    sourceNodeId: string;
+    targetNodeId: string;
+    stage: '802.11k_RRM' | '802.11v_BTM' | '802.11r_FT' | 'completed';
+    latencyMs: number;
+    packetLossPct: number;
+    timestamp: string;
+  } | null>(null);
+
+  // Wireshark & Nmap Hybrid Live Inspector Panel
+  const [showNetworkInspector, setShowNetworkInspector] = useState<boolean>(true);
 
   // Open-source terminal simulation
   const [activeCliRepo, setActiveCliRepo] = useState<string>('OpenWrt Core & iwinfo');
@@ -540,6 +555,40 @@ export function HomeWifiMap() {
 
   const handleSteerClient = async (clientId: string, targetNode: string) => {
     try {
+      const client = clients.find(c => c.id === clientId);
+      const srcNodeId = client?.nodeId || 'node-gw';
+
+      // Stage 1: 802.11k RRM Neighbor Report Request
+      setActiveHandoff({
+        clientId,
+        sourceNodeId: srcNodeId,
+        targetNodeId: targetNode,
+        stage: '802.11k_RRM',
+        latencyMs: 28.4,
+        packetLossPct: 0.0,
+        timestamp: new Date().toLocaleTimeString()
+      });
+
+      // Stage 2: 802.11v BSS Transition Management steering frame
+      setTimeout(() => {
+        setActiveHandoff(prev => prev ? { ...prev, stage: '802.11v_BTM' } : null);
+      }, 700);
+
+      // Stage 3: 802.11r Fast BSS Transition 4-way Over-the-DS handshake (28ms)
+      setTimeout(() => {
+        setActiveHandoff(prev => prev ? { ...prev, stage: '802.11r_FT' } : null);
+      }, 1500);
+
+      // Stage 4: Completed
+      setTimeout(() => {
+        setActiveHandoff(prev => prev ? { ...prev, stage: 'completed' } : null);
+      }, 2300);
+
+      // Dismiss after 5s
+      setTimeout(() => {
+        setActiveHandoff(null);
+      }, 5000);
+
       await fetchJson(`/api/wifi/clients/${clientId}/roam`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -677,6 +726,21 @@ export function HomeWifiMap() {
             body: JSON.stringify({ x: client.x, y: client.y, floor: client.floor, room: client.room })
           });
           await fetchHistoryAndLogs();
+
+          // Calculate closest AP to check if client moved into another node's primary coverage
+          let closestNode = nodes[0];
+          let minDistance = 999999;
+          nodes.forEach(n => {
+            const dist = Math.hypot(n.x - client.x, n.y - client.y);
+            if (dist < minDistance) {
+              minDistance = dist;
+              closestNode = n;
+            }
+          });
+
+          if (closestNode && closestNode.id !== client.nodeId) {
+            handleSteerClient(client.id, closestNode.id);
+          }
         } catch (err) {
           console.error(err);
         }
@@ -1748,6 +1812,77 @@ export function HomeWifiMap() {
                       </g>
                     );
                   })}
+
+                  {/* ACTIVE IEEE 802.11k/v/r CLIENT ROAMING HANDOFF ANIMATION LAYER */}
+                  {activeHandoff && (() => {
+                    const srcNode = nodes.find(n => n.id === activeHandoff.sourceNodeId) || nodes[0];
+                    const dstNode = nodes.find(n => n.id === activeHandoff.targetNodeId) || nodes[1];
+                    const client = clients.find(c => c.id === activeHandoff.clientId) || clients[0];
+                    if (!srcNode || !dstNode) return null;
+
+                    const midX = (srcNode.x + dstNode.x) / 2;
+                    const midY = Math.min(srcNode.y, dstNode.y) - 15;
+                    const arcPath = `M ${srcNode.x} ${srcNode.y} Q ${midX} ${midY} ${dstNode.x} ${dstNode.y}`;
+
+                    return (
+                      <g key="active-roaming-handoff-layer" className="pointer-events-none">
+                        {/* Glow Arc */}
+                        <path
+                          d={arcPath}
+                          fill="none"
+                          stroke="#38bdf8"
+                          strokeWidth="3.5"
+                          strokeDasharray="6 3"
+                          className="animate-pulse"
+                        />
+                        {/* Source Beacon Flash */}
+                        <circle cx={`${srcNode.x}%`} cy={`${srcNode.y}%`} r="14" fill="none" stroke="#38bdf8" strokeWidth="1.5" className="animate-ping" />
+                        {/* Target Beacon Flash */}
+                        <circle cx={`${dstNode.x}%`} cy={`${dstNode.y}%`} r="14" fill="none" stroke="#10b981" strokeWidth="1.5" className="animate-ping" />
+
+                        {/* Traveling Roaming Packet */}
+                        <circle r="6" fill="#38bdf8">
+                          <animate
+                            attributeName="cx"
+                            from={`${srcNode.x}%`}
+                            to={`${dstNode.x}%`}
+                            dur="0.8s"
+                            repeatCount="indefinite"
+                          />
+                          <animate
+                            attributeName="cy"
+                            from={`${srcNode.y}%`}
+                            to={`${dstNode.y}%`}
+                            dur="0.8s"
+                            repeatCount="indefinite"
+                          />
+                        </circle>
+
+                        {/* Interactive Handoff HUD Tag */}
+                        <foreignObject
+                          x={`${Math.max(5, Math.min(80, midX - 18))}%`}
+                          y={`${Math.max(5, Math.min(80, midY - 6))}%`}
+                          width="260"
+                          height="44"
+                        >
+                          <div className="flex items-center justify-center">
+                            <span className={cn(
+                              "text-[10px] font-mono px-2.5 py-1 rounded-lg border shadow-2xl font-bold whitespace-nowrap backdrop-blur-md",
+                              activeHandoff.stage === '802.11k_RRM' ? "bg-purple-950/95 border-purple-400 text-purple-200" :
+                              activeHandoff.stage === '802.11v_BTM' ? "bg-cyan-950/95 border-cyan-400 text-cyan-200" :
+                              activeHandoff.stage === '802.11r_FT' ? "bg-emerald-950/95 border-emerald-400 text-emerald-200 animate-pulse" :
+                              "bg-emerald-900/95 border-emerald-400 text-white"
+                            )}>
+                              {activeHandoff.stage === '802.11k_RRM' && "⚡ 1/3: 802.11k RRM Neighbor Report"}
+                              {activeHandoff.stage === '802.11v_BTM' && "📡 2/3: 802.11v BSS Transition Steering"}
+                              {activeHandoff.stage === '802.11r_FT' && "🚀 3/3: 802.11r Fast BSS Transition (28ms)"}
+                              {activeHandoff.stage === 'completed' && "✓ Roam Complete · 28.4ms · 0% Loss"}
+                            </span>
+                          </div>
+                        </foreignObject>
+                      </g>
+                    );
+                  })()}
                 </svg>
 
                 {/* RF Signal Heatmap Propagation Contours */}
@@ -2072,6 +2207,40 @@ export function HomeWifiMap() {
                   </div>
                 </div>
               </div>
+
+              {/* Wireshark & Nmap Live Telemetry Console Toggle Bar */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-card border border-border">
+                <div className="flex items-center gap-2.5">
+                  <Terminal className="w-4 h-4 text-sky-400" />
+                  <div>
+                    <h4 className="text-xs font-bold text-white font-mono leading-none">
+                      WIRESHARK & NMAP HYBRID INSPECTOR
+                    </h4>
+                    <p className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                      Live frame dissection (802.11k/v/r BSS transition frames, EAPOL, DNS) + Nmap host port reconnaissance
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowNetworkInspector(!showNetworkInspector)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg border text-xs font-mono font-bold transition cursor-pointer flex items-center gap-1.5",
+                    showNetworkInspector ? "bg-sky-500/20 text-sky-300 border-sky-500/40" : "bg-white/5 border-border text-zinc-400 hover:text-white"
+                  )}
+                >
+                  <span>{showNetworkInspector ? "Hide Console" : "Show Wireshark & Nmap Console"}</span>
+                </button>
+              </div>
+
+              {/* Render WiresharkNmapInspector */}
+              {showNetworkInspector && (
+                <WiresharkNmapInspector
+                  selectedClient={selectedClient || myDevice}
+                  selectedNode={selectedNode}
+                  onClose={() => setShowNetworkInspector(false)}
+                />
+              )}
             </div>
 
             {/* Right Col: Selected Node or Active Mesh Inspector */}

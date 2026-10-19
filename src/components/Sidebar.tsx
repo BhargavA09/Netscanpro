@@ -7,7 +7,8 @@ import {
   Users, 
   Activity,
   X,
-  Server
+  Server,
+  Globe
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { fetchJson } from '../lib/api';
@@ -20,6 +21,7 @@ interface SidebarProps {
 }
 
 const navItems = [
+  { id: 'worldmonitor', label: 'Global World Monitor', icon: Globe },
   { id: 'dashboard', label: 'Overview Dashboard', icon: LayoutDashboard },
   { id: 'wifimap', label: 'Wi-Fi Mesh & Floorplan', icon: Wifi },
   { id: 'network', label: 'Device Discovery & Recon', icon: Radar },

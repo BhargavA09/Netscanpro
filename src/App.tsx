@@ -7,13 +7,22 @@ import { CentralNetworkTracking } from './components/CentralNetworkTracking';
 import { NetworkNeighborhood } from './components/NetworkNeighborhood';
 import { SystemLogs } from './components/SystemLogs';
 import { GlobalSearch } from './components/GlobalSearch';
+import { WorldMonitorDashboard } from './components/WorldMonitorDashboard';
 import { fetchJson } from './lib/api';
-import { Bell, Menu, User, Terminal, Wifi } from 'lucide-react';
+import { Bell, Menu, User, Terminal, Wifi, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined' && window.location.search) {
+      const q = window.location.search;
+      if (q.includes('lat=') || q.includes('layers=') || q.includes('view=')) {
+        return 'worldmonitor';
+      }
+    }
+    return 'worldmonitor'; // Default to the requested World Monitor dashboard!
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeStationsCount, setActiveStationsCount] = useState(15);
 
@@ -36,6 +45,8 @@ export default function App() {
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'worldmonitor':
+        return <WorldMonitorDashboard />;
       case 'dashboard':
         return <Dashboard onNavigate={setActiveTab} />;
       case 'wifimap':
@@ -49,7 +60,7 @@ export default function App() {
       case 'activity':
         return <SystemLogs />;
       default:
-        return <Dashboard onNavigate={setActiveTab} />;
+        return <WorldMonitorDashboard />;
     }
   };
 
@@ -143,40 +154,46 @@ export default function App() {
         </header>
 
         {/* Responsive Content Area */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 data-grid">
-          <div className="max-w-7xl mx-auto">
-            <div className="mb-6 sm:mb-8">
-              <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                {activeTab === 'dashboard' && 'Overview Dashboard'}
-                {activeTab === 'wifimap' && 'Home Wi-Fi Mesh & Floorplan Topology'}
-                {activeTab === 'network' && 'Device Discovery & Reconnaissance (ARPing + Nmap)'}
-                {activeTab === 'tracking' && 'Deep Packet Inspection (DPI) & Protocol Anomaly Telemetry'}
-                {activeTab === 'neighborhood' && 'Device & User Access Control'}
-                {activeTab === 'activity' && 'Network Event Logs & Universal System Audit'}
-              </h2>
-              <p className="text-zinc-400 text-xs sm:text-sm mt-1">
-                {activeTab === 'dashboard' && 'Live residential mesh topology status, WAN uplink telemetry, connected stations count, and DPI anomaly overview.'}
-                {activeTab === 'wifimap' && 'Multi-band 2.4/5/6GHz access points, interactive floorplan placement, mesh backhauls, client roaming handoffs, and Cake SQM QoS.'}
-                {activeTab === 'network' && 'Hybrid Layer-2 ARPing and Layer-4 Nmap scanner: active host discovery, MAC vendor resolution, and open port profiling.'}
-                {activeTab === 'tracking' && 'Real-time wire packet frame dissector, DNS resolution hop-by-hop traceroute, and Fourier spectral anomaly analysis.'}
-                {activeTab === 'neighborhood' && 'Household user roles (Homeowner, Family, Smart Home IoT, Guests), device quarantine, VLAN isolation, and speed limits.'}
-                {activeTab === 'activity' && 'Universal system events: DAWN roaming steers, DHCP leases, Pi-hole DNS sinkholes, and OpenWrt nftables firewall drops.'}
-              </p>
-            </div>
-
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.15 }}
-              >
-                {renderContent()}
-              </motion.div>
-            </AnimatePresence>
+        {activeTab === 'worldmonitor' ? (
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {renderContent()}
           </div>
-        </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 data-grid">
+            <div className="max-w-7xl mx-auto">
+              <div className="mb-6 sm:mb-8">
+                <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                  {activeTab === 'dashboard' && 'Overview Dashboard'}
+                  {activeTab === 'wifimap' && 'Home Wi-Fi Mesh & Floorplan Topology'}
+                  {activeTab === 'network' && 'Device Discovery & Reconnaissance (ARPing + Nmap)'}
+                  {activeTab === 'tracking' && 'Deep Packet Inspection (DPI) & Protocol Anomaly Telemetry'}
+                  {activeTab === 'neighborhood' && 'Device & User Access Control'}
+                  {activeTab === 'activity' && 'Network Event Logs & Universal System Audit'}
+                </h2>
+                <p className="text-zinc-400 text-xs sm:text-sm mt-1">
+                  {activeTab === 'dashboard' && 'Live residential mesh topology status, WAN uplink telemetry, connected stations count, and DPI anomaly overview.'}
+                  {activeTab === 'wifimap' && 'Multi-band 2.4/5/6GHz access points, interactive floorplan placement, mesh backhauls, client roaming handoffs, and Cake SQM QoS.'}
+                  {activeTab === 'network' && 'Hybrid Layer-2 ARPing and Layer-4 Nmap scanner: active host discovery, MAC vendor resolution, and open port profiling.'}
+                  {activeTab === 'tracking' && 'Real-time wire packet frame dissector, DNS resolution hop-by-hop traceroute, and Fourier spectral anomaly analysis.'}
+                  {activeTab === 'neighborhood' && 'Household user roles (Homeowner, Family, Smart Home IoT, Guests), device quarantine, VLAN isolation, and speed limits.'}
+                  {activeTab === 'activity' && 'Universal system events: DAWN roaming steers, DHCP leases, Pi-hole DNS sinkholes, and OpenWrt nftables firewall drops.'}
+                </p>
+              </div>
+
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  {renderContent()}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
