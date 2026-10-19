@@ -8,8 +8,10 @@ import { NetworkNeighborhood } from './components/NetworkNeighborhood';
 import { SystemLogs } from './components/SystemLogs';
 import { GlobalSearch } from './components/GlobalSearch';
 import { WorldMonitorDashboard } from './components/WorldMonitorDashboard';
+import { SocThreatCenter } from './components/SocThreatCenter';
+import { ThreatAlertSystem } from './components/ThreatAlertSystem';
 import { fetchJson } from './lib/api';
-import { Bell, Menu, User, Terminal, Wifi, Globe } from 'lucide-react';
+import { Bell, Menu, User, Terminal, Wifi, Globe, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 
@@ -47,6 +49,8 @@ export default function App() {
     switch (activeTab) {
       case 'worldmonitor':
         return <WorldMonitorDashboard />;
+      case 'threats':
+        return <SocThreatCenter />;
       case 'dashboard':
         return <Dashboard onNavigate={setActiveTab} />;
       case 'wifimap':
@@ -163,14 +167,16 @@ export default function App() {
             <div className="max-w-7xl mx-auto">
               <div className="mb-6 sm:mb-8">
                 <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                  {activeTab === 'threats' && 'SOC Threat Intelligence & Intrusion Detection (Suricata + CVE Matrix)'}
                   {activeTab === 'dashboard' && 'Overview Dashboard'}
                   {activeTab === 'wifimap' && 'Home Wi-Fi Mesh & Floorplan Topology'}
                   {activeTab === 'network' && 'Device Discovery & Reconnaissance (ARPing + Nmap)'}
                   {activeTab === 'tracking' && 'Deep Packet Inspection (DPI) & Protocol Anomaly Telemetry'}
-                  {activeTab === 'neighborhood' && 'Device & User Access Control'}
+                  {activeTab === 'neighborhood' && 'Zero-Trust Device & User Access Control'}
                   {activeTab === 'activity' && 'Network Event Logs & Universal System Audit'}
                 </h2>
                 <p className="text-zinc-400 text-xs sm:text-sm mt-1">
+                  {activeTab === 'threats' && 'Real-time signature-based intrusion detection, automated CVE-to-port vulnerability mapping, MITRE ATT&CK framework heatmap, and zero-trust firewall policy enforcement.'}
                   {activeTab === 'dashboard' && 'Live residential mesh topology status, WAN uplink telemetry, connected stations count, and DPI anomaly overview.'}
                   {activeTab === 'wifimap' && 'Multi-band 2.4/5/6GHz access points, interactive floorplan placement, mesh backhauls, client roaming handoffs, and Cake SQM QoS.'}
                   {activeTab === 'network' && 'Hybrid Layer-2 ARPing and Layer-4 Nmap scanner: active host discovery, MAC vendor resolution, and open port profiling.'}
@@ -195,6 +201,9 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Real-time High-Priority Threat Alert Toast Stream */}
+      <ThreatAlertSystem />
     </div>
   );
 }

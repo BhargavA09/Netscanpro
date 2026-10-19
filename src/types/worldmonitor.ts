@@ -1,22 +1,21 @@
 export type WorldMonitorLayer = 
-  | 'cables'
-  | 'pipelines'
-  | 'tradeRoutes'
-  | 'weather'
-  | 'outages'
-  | 'natural'
-  | 'waterways'
-  | 'economic'
-  | 'sanctions'
-  | 'stockExchanges'
-  | 'financialCenters'
-  | 'centralBanks';
+  | 'cables'         // Subsea Fiber Cables & Landing Stations
+  | 'botnets'        // C2 Servers & Botnet Clusters
+  | 'ddos'           // Volumetric DDoS Attacks & Amplification Floods
+  | 'bgpHijacks'     // BGP Route Hijacks & AS Routing Anomaly
+  | 'aptActors'      // Nation-State APT Threat Actor Campaigns
+  | 'zeroDays'       // Active Zero-Day & CISA KEV Exploits
+  | 'ransomware'     // Ransomware Extortion Cartels & Leak Dumps
+  | 'gnssJamming'    // Electronic Warfare & GPS/GNSS Spoofing Zones
+  | 'honeypots'      // Global Honeypot Sensor Grid & Darknet Probes
+  | 'cloudOutages';  // Cloud Hyperscaler & Internet Backbone Outages
 
 export interface GeoCoordinate {
   lat: number;
   lon: number;
 }
 
+// Subsea Telecom Fiber Cables & Landing Points
 export interface SubseaCable {
   id: string;
   name: string;
@@ -29,101 +28,157 @@ export interface SubseaCable {
   landingPoints: { name: string; country: string; coordinates: GeoCoordinate }[];
   pathCoordinates: GeoCoordinate[];
   description: string;
-}
-
-export interface EnergyPipeline {
-  id: string;
-  name: string;
-  commodityType: 'crude_oil' | 'natural_gas' | 'hydrogen' | 'refined_products';
-  lengthKm: number;
-  capacityThroughput: string;
-  status: 'operational' | 'reduced_flow' | 'shutdown' | 'sabotage_offline';
-  origin: string;
-  destination: string;
-  pathCoordinates: GeoCoordinate[];
-  riskLevel: 'LOW' | 'ELEVATED' | 'CRITICAL';
-  description: string;
-}
-
-export interface TradeRouteChokepoint {
-  id: string;
-  name: string;
-  type: 'strait' | 'canal' | 'corridor';
-  coordinates: GeoCoordinate;
-  dailyVessels: number;
-  dailyVolume: string;
-  transitDelayHours: number;
-  status: 'nominal' | 'congested' | 'high_risk' | 'closed';
   securityNotice?: string;
+  associatedIxp?: string;
+}
+
+// C2 Botnet Infrastructure & Beaconing Servers
+export interface C2BotnetCluster {
+  id: string;
+  name: string;
+  malwareFamily: 'Cobalt Strike' | 'Mirai' | 'Lumma Stealer' | 'Emotet' | 'Qakbot' | 'Pikabot' | 'AsyncRAT';
+  threatSeverity: 'CRITICAL' | 'HIGH' | 'ELEVATED';
+  coordinates: GeoCoordinate;
+  city: string;
+  country: string;
+  activeBeaconsCount: number;
+  infectedHostsEstimate: number;
+  primaryC2Port: number;
+  protocol: 'HTTPS' | 'TCP/DNS' | 'IRC' | 'Tor Onion';
+  c2Ip: string;
+  asn: string;
+  ja4Fingerprint: string;
+  targetedSectors: string[];
+  mitreTechnique: string;
+  mitreTactic: string;
+  status: 'ACTIVE_BEACONING' | 'CONTAINMENT_IN_PROGRESS' | 'DORMANT_RESERVE';
+  lastSeen: string;
+  remediationCommand: string;
+}
+
+// Volumetric DDoS Attacks & Amplification Vectors
+export interface DdosAttackStream {
+  id: string;
+  targetName: string;
+  victimSector: 'Financial Gateway' | 'Critical Cloud Hyperscaler' | 'DNS Root Server' | 'Government Portal' | 'Defense Industrial Base';
+  attackType: 'DNS Amplification' | 'NTP Monlist' | 'SYN Flood' | 'HTTP/2 Rapid Reset' | 'CLDAP Reflection';
+  peakBandwidthTbps: number;
+  peakPacketsMpps: number;
+  coordinates: GeoCoordinate;
+  originCoordinates: GeoCoordinate;
+  targetAsn: string;
+  status: 'ONGOING_ATTACK' | 'MITIGATING' | 'DEFLECTED';
+  durationMinutes: number;
+  mitigationMethod: string;
   description: string;
 }
 
-export interface StockExchange {
+// BGP Route Hijacks & AS Leaks
+export interface BgpHijackIncident {
   id: string;
-  name: string;
-  mic: string;
-  city: string;
-  country: string;
+  prefix: string;
+  victimAsn: string;
+  victimOrg: string;
+  hijackerAsn: string;
+  hijackerOrg: string;
   coordinates: GeoCoordinate;
-  marketCapTrillion: number;
-  currency: string;
-  timezone: string;
-  tradingHoursUtc: string;
-  status: 'OPEN' | 'CLOSED' | 'PRE_MARKET' | 'AFTER_HOURS';
-  primaryIndexName: string;
-  indexValue: number;
-  change24hPercent: number;
-  volumeTodayBillion: number;
+  rpkiStatus: 'INVALID' | 'UNAUTHORIZED_ANNOUNCEMENT' | 'SUB_PREFIX_HIJACK';
+  severity: 'CRITICAL' | 'MAJOR';
+  impactedPrefixes: number;
+  detectedAt: string;
+  durationMinutes: number;
+  status: 'ACTIVE_HIJACK' | 'WITHDRAWN' | 'FILTERED_BY_UPSTREAMS';
+  packetRedirectionRisk: string;
 }
 
-export interface CentralBank {
+// Nation-State APT Campaigns
+export interface AptActorCampaign {
   id: string;
   name: string;
-  country: string;
-  city: string;
+  alias: string;
+  nationSponsor: 'Russia (GRU/SVR)' | 'China (MSS/PLA)' | 'North Korea (RGB)' | 'Iran (IRGC)' | 'Unknown State';
   coordinates: GeoCoordinate;
-  governor: string;
-  benchmarkRatePercent: number;
-  inflationTargetPercent: number;
-  balanceSheetTrillion: number;
-  currency: string;
-  stance: 'HAWKISH' | 'NEUTRAL' | 'DOVISH';
-  nextMeetingDate: string;
-  lastDecisionDate: string;
-  policySummary: string;
+  activeCampaignName: string;
+  targetCountries: string[];
+  targetSectors: string[];
+  primaryObjective: 'Critical Infrastructure Pre-positioning' | 'Espionage & Source Exfiltration' | 'Financial Crypto Theft' | 'Destructive Wiper';
+  primaryCVEs: string[];
+  mitreAttAndCkGroup: string;
+  ttps: string[];
+  threatLevel: 'CRITICAL' | 'HIGH';
+  status: 'ACTIVE_CAMPAIGN' | 'MONITORED';
+  indicatorsOfCompromise: string[];
+  countermeasure: string;
 }
 
-export interface FinancialCenter {
+// Zero-Day & CISA KEV Exploits
+export interface ZeroDayExploit {
   id: string;
-  name: string;
-  city: string;
-  country: string;
+  cveId: string;
+  softwareName: string;
+  vendor: string;
+  cvssScore: number;
+  epssProbability: number;
   coordinates: GeoCoordinate;
-  globalRank: number;
-  financialSecrecyTier: 'MODERATE' | 'STRICT' | 'OPEN';
-  assetsUnderMgmtTrillion: number;
-  dailyFxVolumeBillion: number;
-  keyInstitutions: string[];
+  attackVector: 'REMOTE_CODE_EXECUTION' | 'AUTHENTICATION_BYPASS' | 'PRIVILEGE_ESCALATION' | 'COMMAND_INJECTION';
+  cisaKevDate: string;
+  exploitInTheWild: boolean;
+  publicPocAvailable: boolean;
+  activeExploitationBursts: number;
+  patchStatus: 'EMERGENCY_PATCH_AVAILABLE' | 'UNPATCHED_ZERO_DAY' | 'WORKAROUND_ONLY';
+  remediationGuidance: string;
 }
 
-export interface WeatherSystem {
+// Ransomware Cartels & Leak Dumps
+export interface RansomwareCartel {
   id: string;
-  name: string;
-  category: string;
-  type: 'tropical_cyclone' | 'typhoon' | 'polar_vortex' | 'severe_storm';
+  gangName: string;
+  ransomwareVariant: string;
   coordinates: GeoCoordinate;
-  windSpeedKnots: number;
-  centralPressureMbar: number;
-  movementKnots: number;
+  totalVictimsYtd: number;
+  activeExtortionCount: number;
+  latestVictim: string;
+  latestVictimSector: string;
+  exfiltratedDataGb: number;
+  countdownHoursLeft: number;
+  cryptoWalletTracked: string;
+  leakSiteStatus: 'ONLINE_ACTIVE' | 'SEIZED_BY_LE' | 'DDoS_OFFLINE';
+  severity: 'CRITICAL' | 'HIGH';
+}
+
+// Electronic Warfare & GPS/GNSS Spoofing
+export interface GnssJammingZone {
+  id: string;
+  regionName: string;
+  coordinates: GeoCoordinate;
   radiusKm: number;
-  severity: 'WARNING' | 'CRITICAL' | 'ADVISORY';
-  affectedLogistics: string;
+  jammingType: 'GPS_SPOOFING' | 'L1_L2_NOISE_JAMMING' | 'NTP_TIME_SHIFT_ATTACK';
+  impactLevel: 'SEVERE_CIVIL_DISRUPTION' | 'CRITICAL_TIMING_DESYNC' | 'ELEVATED';
+  affectedAirMaritimeRoutes: string;
+  suspectedOrigin: string;
+  status: 'ACTIVE_JAMMING' | 'INTERMITTENT';
+  description: string;
 }
 
+// Honeypot Sensor Grid Hits
+export interface HoneypotHit {
+  id: string;
+  sensorLocation: string;
+  coordinates: GeoCoordinate;
+  sensorType: 'SSH/Cowrie' | 'Telnet/Mirai' | 'DNP3/SCADA' | 'SIP/VoIP' | 'SMB/EternalBlue';
+  hitsLastHour: number;
+  topAttackingSubnet: string;
+  topOriginCountry: string;
+  bruteForceCredentialsSample: string[];
+  payloadCaptured: string;
+  severity: 'HIGH' | 'MEDIUM';
+}
+
+// Cloud Hyperscaler & Infrastructure Outages
 export interface InfrastructureOutage {
   id: string;
   title: string;
-  type: 'cable_cut' | 'power_grid' | 'cloud_datacenter' | 'cyber_disruption';
+  type: 'cable_cut' | 'cloud_datacenter' | 'ixp_failure' | 'dns_infrastructure';
   coordinates: GeoCoordinate;
   affectedRegions: string[];
   impactedTrafficPct: number;
@@ -133,60 +188,24 @@ export interface InfrastructureOutage {
   cause: string;
 }
 
-export interface NaturalHazard {
+// Live Threat Telemetry HUD Item
+export interface CyberThreatTickerItem {
+  indicator: string;
+  label: string;
+  value: string;
+  status: 'CRITICAL' | 'WARNING' | 'HEALTHY' | 'ACTIVE';
+  trend: 'UP' | 'DOWN' | 'STABLE';
+}
+
+// Global Cyber Situation Event
+export interface GlobalCyberEvent {
   id: string;
-  name: string;
-  type: 'earthquake' | 'volcano' | 'tsunami_alert';
-  coordinates: GeoCoordinate;
-  magnitude?: number;
-  depthKm?: number;
-  severity: 'ALERT' | 'WATCH' | 'CRITICAL';
+  headline: string;
+  threatType: 'APT_CAMPAIGN' | 'DDOS_BURST' | 'ZERO_DAY' | 'BGP_LEAK' | 'CABLE_CUT' | 'RANSOMWARE';
+  region: string;
+  source: string;
   timestamp: string;
-  proximityToTrade: string;
-}
-
-export interface StrategicWaterway {
-  id: string;
-  name: string;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
+  description: string;
   coordinates: GeoCoordinate;
-  lengthKm: number;
-  maxDraftMeters: number;
-  activeVesselsWaiting: number;
-  status: 'OPEN' | 'RESTRICTED' | 'MAINTENANCE';
-  annualTonnageMillion: number;
-}
-
-export interface SanctionRegime {
-  id: string;
-  regimeName: string;
-  authority: 'OFAC' | 'EU' | 'UN' | 'UK_OFSI';
-  coordinates: GeoCoordinate;
-  flaggedCount: number;
-  targetedSectors: string[];
-  shadowFleetTankersTracked: number;
-  enforcementLevel: 'STRICT' | 'ACTIVE_BLOCKADE' | 'SECONDARY_SANCTIONS';
-  summary: string;
-}
-
-export interface MacroEconomicMetric {
-  id: string;
-  country: string;
-  code: string;
-  coordinates: GeoCoordinate;
-  gdpTrillion: number;
-  gdpGrowthPercent: number;
-  cpiInflationPercent: number;
-  debtToGdpPercent: number;
-  tenYearYieldPercent: number;
-  foreignReservesBillion: number;
-}
-
-export interface FinancialTickerItem {
-  symbol: string;
-  name: string;
-  category: 'equity' | 'forex' | 'commodity' | 'bond' | 'crypto';
-  price: string;
-  changePercent: number;
-  changeAbsolute: string;
-  currency: string;
 }

@@ -13,53 +13,53 @@ import {
   AlertTriangle,
   Radio,
   Sliders,
-  DollarSign,
-  TrendingUp,
-  TrendingDown,
-  Anchor,
-  Flame,
-  Wind,
-  Zap,
-  Building2,
-  Landmark,
   ShieldAlert,
   ChevronRight,
   Maximize2,
   X,
   ExternalLink,
-  Info
+  Info,
+  Terminal,
+  Zap,
+  Crosshair,
+  Skull,
+  Server,
+  Lock,
+  Wifi,
+  Copy,
+  CheckCircle2,
+  Shield,
+  FileCode,
+  Download
 } from 'lucide-react';
 import {
   WorldMonitorLayer,
   GeoCoordinate,
   SubseaCable,
-  EnergyPipeline,
-  TradeRouteChokepoint,
-  StockExchange,
-  CentralBank,
-  FinancialCenter,
-  WeatherSystem,
+  C2BotnetCluster,
+  DdosAttackStream,
+  BgpHijackIncident,
+  AptActorCampaign,
+  ZeroDayExploit,
+  RansomwareCartel,
+  GnssJammingZone,
+  HoneypotHit,
   InfrastructureOutage,
-  NaturalHazard,
-  StrategicWaterway,
-  SanctionRegime,
-  MacroEconomicMetric
+  GlobalCyberEvent
 } from '../types/worldmonitor';
 import {
-  TICKER_ITEMS,
-  STOCK_EXCHANGES,
+  CYBER_THREAT_TICKER,
   SUBSEA_CABLES,
-  ENERGY_PIPELINES,
-  TRADE_ROUTE_CHOKEPOINTS,
-  CENTRAL_BANKS,
-  FINANCIAL_CENTERS,
-  WEATHER_SYSTEMS,
+  C2_BOTNET_CLUSTERS,
+  DDOS_ATTACKS,
+  BGP_HIJACKS,
+  APT_CAMPAIGNS,
+  ZERO_DAY_EXPLOITS,
+  RANSOMWARE_CARTELS,
+  GNSS_JAMMING_ZONES,
+  HONEYPOT_HITS,
   INFRASTRUCTURE_OUTAGES,
-  NATURAL_HAZARDS,
-  STRATEGIC_WATERWAYS,
-  SANCTION_REGIMES,
-  MACRO_METRICS,
-  SITUATION_EVENTS
+  GLOBAL_CYBER_EVENTS
 } from '../services/worldMonitorData';
 import { cn } from '../lib/utils';
 
@@ -87,1170 +87,1020 @@ const WORLD_LANDMASS_PATHS = [
   "M 845 180 L 860 170 L 855 210 L 840 215 Z M 760 310 L 810 320 L 830 350 L 770 340 Z"
 ];
 
-const ALL_LAYERS_CONFIG: { id: WorldMonitorLayer; label: string; icon: any; count: number; color: string }[] = [
-  { id: 'stockExchanges', label: 'Stock Exchanges', icon: Building2, count: STOCK_EXCHANGES.length, color: 'text-emerald-400' },
-  { id: 'centralBanks', label: 'Central Banks', icon: Landmark, count: CENTRAL_BANKS.length, color: 'text-sky-400' },
-  { id: 'financialCenters', label: 'Financial Centers', icon: DollarSign, count: FINANCIAL_CENTERS.length, color: 'text-purple-400' },
-  { id: 'cables', label: 'Subsea Cables', icon: Radio, count: SUBSEA_CABLES.length, color: 'text-cyan-400' },
-  { id: 'pipelines', label: 'Energy Pipelines', icon: Flame, count: ENERGY_PIPELINES.length, color: 'text-amber-400' },
-  { id: 'tradeRoutes', label: 'Trade Chokepoints', icon: Anchor, count: TRADE_ROUTE_CHOKEPOINTS.length, color: 'text-rose-400' },
-  { id: 'waterways', label: 'Waterways & Canals', icon: Compass, count: STRATEGIC_WATERWAYS.length, color: 'text-blue-400' },
-  { id: 'outages', label: 'Infrastructure Outages', icon: Zap, count: INFRASTRUCTURE_OUTAGES.length, color: 'text-red-400' },
-  { id: 'weather', label: 'Extreme Weather', icon: Wind, count: WEATHER_SYSTEMS.length, color: 'text-teal-400' },
-  { id: 'natural', label: 'Natural Hazards', icon: AlertTriangle, count: NATURAL_HAZARDS.length, color: 'text-orange-400' },
-  { id: 'sanctions', label: 'Sanction Regimes', icon: ShieldAlert, count: SANCTION_REGIMES.length, color: 'text-fuchsia-400' },
-  { id: 'economic', label: 'Macro Indicators', icon: TrendingUp, count: MACRO_METRICS.length, color: 'text-lime-400' }
+const ALL_CYBER_LAYERS_CONFIG: { id: WorldMonitorLayer; label: string; icon: any; count: number; color: string; badgeColor: string }[] = [
+  { id: 'botnets', label: 'C2 Servers & Botnets', icon: Skull, count: C2_BOTNET_CLUSTERS.length, color: 'text-rose-400', badgeColor: 'bg-rose-500/20 border-rose-500/40 text-rose-300' },
+  { id: 'aptActors', label: 'Nation-State APTs', icon: Crosshair, count: APT_CAMPAIGNS.length, color: 'text-purple-400', badgeColor: 'bg-purple-500/20 border-purple-500/40 text-purple-300' },
+  { id: 'ddos', label: 'Volumetric DDoS', icon: Zap, count: DDOS_ATTACKS.length, color: 'text-amber-400', badgeColor: 'bg-amber-500/20 border-amber-500/40 text-amber-300' },
+  { id: 'zeroDays', label: 'Active Zero-Days (KEV)', icon: AlertTriangle, count: ZERO_DAY_EXPLOITS.length, color: 'text-orange-400', badgeColor: 'bg-orange-500/20 border-orange-500/40 text-orange-300' },
+  { id: 'ransomware', label: 'Ransomware Extortion', icon: Lock, count: RANSOMWARE_CARTELS.length, color: 'text-red-400', badgeColor: 'bg-red-500/20 border-red-500/40 text-red-300' },
+  { id: 'cables', label: 'Subsea Fiber Cables', icon: Radio, count: SUBSEA_CABLES.length, color: 'text-cyan-400', badgeColor: 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300' },
+  { id: 'bgpHijacks', label: 'BGP Route Hijacks', icon: Activity, count: BGP_HIJACKS.length, color: 'text-yellow-400', badgeColor: 'bg-yellow-500/20 border-yellow-500/40 text-yellow-300' },
+  { id: 'gnssJamming', label: 'Electronic Warfare (GNSS)', icon: Wifi, count: GNSS_JAMMING_ZONES.length, color: 'text-emerald-400', badgeColor: 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' },
+  { id: 'honeypots', label: 'Honeypot Grid Hits', icon: Server, count: HONEYPOT_HITS.length, color: 'text-teal-400', badgeColor: 'bg-teal-500/20 border-teal-500/40 text-teal-300' },
+  { id: 'cloudOutages', label: 'Cloud & Backbone Outages', icon: ShieldAlert, count: INFRASTRUCTURE_OUTAGES.length, color: 'text-blue-400', badgeColor: 'bg-blue-500/20 border-blue-500/40 text-blue-300' },
 ];
 
 export function WorldMonitorDashboard() {
-  // Map viewport state: default coordinates from user's URL: lat=18.6552, lon=-63.0564, zoom=4.84
-  const [viewport, setViewport] = useState<{ lat: number; lon: number; zoom: number }>({
-    lat: 18.6552,
-    lon: -63.0564,
-    zoom: 4.84
+  // Synchronized Coordinate & Navigation HUD State
+  const [lat, setLat] = useState<number>(18.6552);
+  const [lon, setLon] = useState<number>(63.0564);
+  const [zoom, setZoom] = useState<number>(4.84);
+  const [viewMode, setViewMode] = useState<'global' | 'regional' | 'tactical'>('global');
+  const [timeRange, setTimeRange] = useState<'1h' | '6h' | '24h' | '7d'>('1h');
+  
+  // Enabled Cyber Layers
+  const [enabledLayers, setEnabledLayers] = useState<Record<WorldMonitorLayer, boolean>>({
+    botnets: true,
+    aptActors: true,
+    ddos: true,
+    zeroDays: true,
+    ransomware: true,
+    cables: true,
+    bgpHijacks: true,
+    gnssJamming: true,
+    honeypots: true,
+    cloudOutages: true
   });
 
-  const [activeLayers, setActiveLayers] = useState<Set<WorldMonitorLayer>>(
-    new Set([
-      'cables',
-      'pipelines',
-      'tradeRoutes',
-      'weather',
-      'outages',
-      'natural',
-      'waterways',
-      'economic',
-      'sanctions',
-      'stockExchanges',
-      'financialCenters',
-      'centralBanks'
-    ])
-  );
-
-  const [timeRange, setTimeRange] = useState<'1h' | '24h' | '7d' | '30d' | '1y'>('1h');
+  // UI state
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+  const [eventsDrawerOpen, setEventsDrawerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedEntity, setSelectedEntity] = useState<any | null>(null);
-  const [selectedEntityType, setSelectedEntityType] = useState<WorldMonitorLayer | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [tickerOffset, setTickerOffset] = useState(0);
+  const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
+  const [selectedLayerType, setSelectedLayerType] = useState<WorldMonitorLayer | null>(null);
+  const [copiedText, setCopiedText] = useState<string | null>(null);
+  const [remediationFeedback, setRemediationFeedback] = useState<string | null>(null);
 
-  const mapSvgRef = useRef<SVGSVGElement | null>(null);
+  // Map dragging state
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
+  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Parse URL parameters on initial mount if available in browser
+  // Read URL parameters on initial mount to support deep links
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.location.search) {
-      try {
-        const params = new URLSearchParams(window.location.search);
-        const latParam = parseFloat(params.get('lat') || '');
-        const lonParam = parseFloat(params.get('lon') || '');
-        const zoomParam = parseFloat(params.get('zoom') || '');
-        const timeRangeParam = params.get('timeRange') as any;
-        const layersParam = params.get('layers');
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const urlLat = searchParams.get('lat');
+      const urlLon = searchParams.get('lon');
+      const urlZoom = searchParams.get('zoom');
+      const urlView = searchParams.get('view');
+      const urlTime = searchParams.get('timeRange');
+      const urlLayers = searchParams.get('layers');
 
-        if (!isNaN(latParam) && !isNaN(lonParam)) {
-          setViewport(prev => ({
-            lat: latParam,
-            lon: lonParam,
-            zoom: !isNaN(zoomParam) ? zoomParam : prev.zoom
-          }));
-        }
+      if (urlLat && !isNaN(parseFloat(urlLat))) setLat(parseFloat(urlLat));
+      if (urlLon && !isNaN(parseFloat(urlLon))) setLon(parseFloat(urlLon));
+      if (urlZoom && !isNaN(parseFloat(urlZoom))) setZoom(parseFloat(urlZoom));
+      if (urlView === 'global' || urlView === 'regional' || urlView === 'tactical') setViewMode(urlView);
+      if (urlTime && ['1h', '6h', '24h', '7d'].includes(urlTime)) setTimeRange(urlTime as any);
 
-        if (['1h', '24h', '7d', '30d', '1y'].includes(timeRangeParam)) {
-          setTimeRange(timeRangeParam);
-        }
-
-        if (layersParam) {
-          const split = layersParam.split(',') as WorldMonitorLayer[];
-          const valid = split.filter(l => ALL_LAYERS_CONFIG.some(c => c.id === l));
-          if (valid.length > 0) {
-            setActiveLayers(new Set(valid));
-          }
-        }
-      } catch {
-        // Fallback to default
+      if (urlLayers) {
+        const layerList = urlLayers.split(',');
+        const newLayers = { ...enabledLayers };
+        (Object.keys(newLayers) as WorldMonitorLayer[]).forEach(k => {
+          newLayers[k] = layerList.includes(k);
+        });
+        setEnabledLayers(newLayers);
       }
+    } catch (e) {
+      // Graceful fallback if window.location isn't available
     }
   }, []);
 
-  // Update URL parameters dynamically when state changes without page reload
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.history.replaceState) {
-      try {
-        const params = new URLSearchParams();
-        params.set('lat', viewport.lat.toFixed(4));
-        params.set('lon', viewport.lon.toFixed(4));
-        params.set('zoom', viewport.zoom.toFixed(2));
-        params.set('view', 'global');
-        params.set('timeRange', timeRange);
-        params.set('layers', Array.from(activeLayers).join(','));
-        const newUrl = `${window.location.pathname}?${params.toString()}`;
-        window.history.replaceState(null, '', newUrl);
-      } catch {
-        // Ignored
-      }
+  // Update browser URL query params dynamically to keep shareable URL fresh
+  const updateUrlParams = (newLat: number, newLon: number, newZoom: number) => {
+    try {
+      const activeKeys = Object.entries(enabledLayers)
+        .filter(([_, v]) => v)
+        .map(([k]) => k)
+        .join(',');
+      
+      const params = new URLSearchParams({
+        lat: newLat.toFixed(4),
+        lon: newLon.toFixed(4),
+        zoom: newZoom.toFixed(2),
+        view: viewMode,
+        timeRange: timeRange,
+        layers: activeKeys
+      });
+      window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+    } catch (e) {
+      // Ignore if iframe restricts history
     }
-  }, [viewport, timeRange, activeLayers]);
+  };
 
-  // Coordinate projection math: Convert lat/lon into SVG canvas coordinates [0..1000, 0..500]
-  // applying current viewport center (lat, lon) and zoom level
-  const projectGeo = (coord: GeoCoordinate) => {
-    const baseWidth = 1000;
-    const baseHeight = 500;
-
-    // Standard equirectangular projection
-    const xBase = ((coord.lon + 180) / 360) * baseWidth;
-    const yBase = ((90 - coord.lat) / 180) * baseHeight;
-
-    const centerX = ((viewport.lon + 180) / 360) * baseWidth;
-    const centerY = ((90 - viewport.lat) / 180) * baseHeight;
-
-    // Apply zoom relative to center
-    const x = (xBase - centerX) * (viewport.zoom / 2.5) + baseWidth / 2;
-    const y = (yBase - centerY) * (viewport.zoom / 2.5) + baseHeight / 2;
-
+  // Convert GPS Coordinates (Lat/Lon) to SVG projection coordinates
+  // Equirectangular projection into 1000 x 500 space
+  const projectGeo = (point: GeoCoordinate) => {
+    const x = ((point.lon + 180) / 360) * 1000;
+    const y = ((90 - point.lat) / 180) * 500;
     return { x, y };
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    setDragStart({ x: e.clientX, y: e.clientY });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    const dx = e.clientX - dragStart.x;
-    const dy = e.clientY - dragStart.y;
-    setDragStart({ x: e.clientX, y: e.clientY });
-
-    // Invert delta to pan smoothly
-    const sensitivity = 0.15 / (viewport.zoom / 2);
-    setViewport(prev => {
-      let newLon = prev.lon - dx * sensitivity;
-      if (newLon > 180) newLon -= 360;
-      if (newLon < -180) newLon += 360;
-
-      let newLat = prev.lat + dy * sensitivity;
-      newLat = Math.max(-85, Math.min(85, newLat));
-
-      return { ...prev, lat: newLat, lon: newLon };
-    });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
   const handleZoom = (delta: number) => {
-    setViewport(prev => ({
-      ...prev,
-      zoom: Math.max(1.0, Math.min(16.0, Math.round((prev.zoom + delta) * 100) / 100))
-    }));
+    const nextZoom = Math.max(1, Math.min(16, Number((zoom + delta).toFixed(2))));
+    setZoom(nextZoom);
+    updateUrlParams(lat, lon, nextZoom);
   };
 
-  const resetToTargetLocation = (lat: number, lon: number, zoom: number) => {
-    setViewport({ lat, lon, zoom });
+  const handleResetView = () => {
+    setLat(18.6552);
+    setLon(63.0564);
+    setZoom(4.84);
+    setPanOffset({ x: 0, y: 0 });
+    updateUrlParams(18.6552, 63.0564, 4.84);
   };
 
   const toggleLayer = (layer: WorldMonitorLayer) => {
-    setActiveLayers(prev => {
-      const next = new Set(prev);
-      if (next.has(layer)) {
-        next.delete(layer);
-      } else {
-        next.add(layer);
-      }
-      return next;
+    setEnabledLayers(prev => {
+      const updated = { ...prev, [layer]: !prev[layer] };
+      return updated;
     });
   };
 
-  const selectAllLayers = () => {
-    setActiveLayers(new Set(ALL_LAYERS_CONFIG.map(l => l.id)));
+  const enableAllLayers = () => {
+    const allOn = { ...enabledLayers };
+    (Object.keys(allOn) as WorldMonitorLayer[]).forEach(k => { allOn[k] = true; });
+    setEnabledLayers(allOn);
   };
 
-  const clearAllLayers = () => {
-    setActiveLayers(new Set());
+  const disableAllLayers = () => {
+    const allOff = { ...enabledLayers };
+    (Object.keys(allOff) as WorldMonitorLayer[]).forEach(k => { allOff[k] = false; });
+    setEnabledLayers(allOff);
   };
 
-  // Filtered lists
-  const filteredExchanges = useMemo(() => {
-    if (!activeLayers.has('stockExchanges')) return [];
-    if (!searchQuery) return STOCK_EXCHANGES;
-    const q = searchQuery.toLowerCase();
-    return STOCK_EXCHANGES.filter(
-      e => e.name.toLowerCase().includes(q) || e.city.toLowerCase().includes(q) || e.primaryIndexName.toLowerCase().includes(q)
-    );
-  }, [activeLayers, searchQuery]);
+  // Map panning handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsPanning(true);
+    setPanStart({ x: e.clientX, y: e.clientY });
+  };
 
-  const filteredCentralBanks = useMemo(() => {
-    if (!activeLayers.has('centralBanks')) return [];
-    if (!searchQuery) return CENTRAL_BANKS;
-    const q = searchQuery.toLowerCase();
-    return CENTRAL_BANKS.filter(b => b.name.toLowerCase().includes(q) || b.country.toLowerCase().includes(q));
-  }, [activeLayers, searchQuery]);
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isPanning || !panStart) return;
+    const dx = e.clientX - panStart.x;
+    const dy = e.clientY - panStart.y;
+    setPanOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+    setPanStart({ x: e.clientX, y: e.clientY });
 
-  const filteredChokepoints = useMemo(() => {
-    if (!activeLayers.has('tradeRoutes')) return [];
-    if (!searchQuery) return TRADE_ROUTE_CHOKEPOINTS;
-    const q = searchQuery.toLowerCase();
-    return TRADE_ROUTE_CHOKEPOINTS.filter(c => c.name.toLowerCase().includes(q));
-  }, [activeLayers, searchQuery]);
+    // Derive approximate coordinate shift
+    const nextLon = Number((lon - (dx / (zoom * 2))).toFixed(4));
+    const nextLat = Number((lat + (dy / (zoom * 2))).toFixed(4));
+    setLon(Math.max(-180, Math.min(180, nextLon)));
+    setLat(Math.max(-85, Math.min(85, nextLat)));
+  };
 
-  const filteredCables = useMemo(() => {
-    if (!activeLayers.has('cables')) return [];
-    if (!searchQuery) return SUBSEA_CABLES;
-    const q = searchQuery.toLowerCase();
-    return SUBSEA_CABLES.filter(c => c.name.toLowerCase().includes(q));
-  }, [activeLayers, searchQuery]);
+  const handleMouseUp = () => {
+    if (isPanning) {
+      setIsPanning(false);
+      setPanStart(null);
+      updateUrlParams(lat, lon, zoom);
+    }
+  };
 
-  const filteredPipelines = useMemo(() => {
-    if (!activeLayers.has('pipelines')) return [];
-    if (!searchQuery) return ENERGY_PIPELINES;
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedText(label);
+    setTimeout(() => setCopiedText(null), 2500);
+  };
+
+  const executeContainmentRule = (cmd: string) => {
+    setRemediationFeedback(`Executed containment rule on local firewall: "${cmd}"`);
+    setTimeout(() => setRemediationFeedback(null), 4000);
+  };
+
+  // Filtered Assets based on Search Query
+  const filteredC2 = useMemo(() => {
+    if (!searchQuery) return C2_BOTNET_CLUSTERS;
     const q = searchQuery.toLowerCase();
-    return ENERGY_PIPELINES.filter(p => p.name.toLowerCase().includes(q));
-  }, [activeLayers, searchQuery]);
+    return C2_BOTNET_CLUSTERS.filter(c => c.name.toLowerCase().includes(q) || c.c2Ip.includes(q) || c.malwareFamily.toLowerCase().includes(q));
+  }, [searchQuery]);
+
+  const filteredApt = useMemo(() => {
+    if (!searchQuery) return APT_CAMPAIGNS;
+    const q = searchQuery.toLowerCase();
+    return APT_CAMPAIGNS.filter(a => a.name.toLowerCase().includes(q) || a.alias.toLowerCase().includes(q) || a.activeCampaignName.toLowerCase().includes(q));
+  }, [searchQuery]);
+
+  const filteredDdos = useMemo(() => {
+    if (!searchQuery) return DDOS_ATTACKS;
+    const q = searchQuery.toLowerCase();
+    return DDOS_ATTACKS.filter(d => d.targetName.toLowerCase().includes(q) || d.attackType.toLowerCase().includes(q));
+  }, [searchQuery]);
+
+  const filteredZeroDays = useMemo(() => {
+    if (!searchQuery) return ZERO_DAY_EXPLOITS;
+    const q = searchQuery.toLowerCase();
+    return ZERO_DAY_EXPLOITS.filter(z => z.cveId.toLowerCase().includes(q) || z.softwareName.toLowerCase().includes(q));
+  }, [searchQuery]);
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950 text-zinc-100 select-none overflow-hidden relative font-sans">
-      {/* ============================================================== */}
-      {/* 1. TOP TICKER: LIVE GLOBAL FINANCIAL & COMMODITY TICKER        */}
-      {/* ============================================================== */}
-      <div className="h-9 border-b border-zinc-800/80 bg-zinc-950/95 flex items-center px-4 shrink-0 overflow-x-auto no-scrollbar gap-6 text-[11px] font-mono tabular-nums shadow-inner z-20">
-        <div className="flex items-center gap-2 shrink-0 pr-3 border-r border-zinc-800 text-zinc-400">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="font-bold text-white text-[10px] tracking-widest uppercase">WORLD MONITOR FINANCE</span>
+    <div className="relative w-full h-[calc(100vh-4rem)] bg-[#070b12] text-slate-100 flex flex-col select-none overflow-hidden font-sans">
+      
+      {/* 1. TOP LIVE CYBER THREAT TELEMETRY HUD (Replacing non-cyber stock tickers) */}
+      <div className="h-10 bg-[#0a0f18] border-b border-border/80 flex items-center px-4 overflow-hidden shrink-0 z-30 shadow-md">
+        <div className="flex items-center gap-2 pr-4 border-r border-border/60 text-xs font-mono font-bold tracking-wider text-rose-400 whitespace-nowrap">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+          </span>
+          GLOBAL CTI TELEMETRY
         </div>
 
-        <div className="flex items-center gap-6 shrink-0">
-          {TICKER_ITEMS.map(t => (
-            <div key={t.symbol} className="flex items-center gap-2 shrink-0">
-              <span className="text-zinc-400 font-semibold">{t.symbol}</span>
-              <span className="text-zinc-200 font-bold">{t.price}</span>
-              <span
-                className={cn(
-                  "flex items-center gap-0.5 text-[10px] font-medium",
-                  t.changePercent >= 0 ? "text-emerald-400" : "text-rose-400"
-                )}
-              >
-                {t.changePercent >= 0 ? '+' : ''}{t.changePercent.toFixed(2)}%
+        <div className="flex-1 flex items-center gap-6 overflow-x-auto no-scrollbar py-1 px-4 text-xs font-mono">
+          {CYBER_THREAT_TICKER.map((item) => (
+            <div key={item.indicator} className="flex items-center gap-2 whitespace-nowrap shrink-0 group cursor-default">
+              <span className="text-muted-foreground group-hover:text-slate-300 transition-colors text-[11px] font-semibold">
+                {item.label}:
+              </span>
+              <span className={cn(
+                "px-2 py-0.5 rounded text-[11px] font-bold border",
+                item.status === 'CRITICAL' && "bg-rose-500/15 text-rose-300 border-rose-500/40",
+                item.status === 'WARNING' && "bg-amber-500/15 text-amber-300 border-amber-500/40",
+                item.status === 'HEALTHY' && "bg-emerald-500/15 text-emerald-300 border-emerald-500/40",
+                item.status === 'ACTIVE' && "bg-cyan-500/15 text-cyan-300 border-cyan-500/40"
+              )}>
+                {item.value}
               </span>
             </div>
           ))}
         </div>
+
+        <div className="hidden lg:flex items-center gap-3 pl-4 border-l border-border/60 text-xs font-mono text-muted-foreground whitespace-nowrap">
+          <span className="text-emerald-400 font-bold">SENTINEL-DEFENSE-ONLINE</span>
+          <span>·</span>
+          <span>LAT {lat.toFixed(4)}° N</span>
+          <span>LON {lon.toFixed(4)}° E</span>
+          <span>ZOOM {zoom}x</span>
+        </div>
       </div>
 
-      {/* ============================================================== */}
-      {/* 2. COMMAND HEADER & COORDINATE HUD BAR                         */}
-      {/* ============================================================== */}
-      <div className="p-3 px-4 border-b border-zinc-800 bg-zinc-900/60 backdrop-blur-md flex flex-wrap items-center justify-between gap-3 shrink-0 z-20">
-        {/* Left: Tactical Coordinates & Location Quick Jumps */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-2 bg-black/60 border border-zinc-800 px-3 py-1.5 rounded-lg text-xs font-mono">
-            <Compass className="w-3.5 h-3.5 text-cyan-400 animate-spin" style={{ animationDuration: '16s' }} />
-            <span className="text-zinc-400">LAT:</span>
-            <span className="text-white font-bold">{viewport.lat >= 0 ? `${viewport.lat.toFixed(4)}°N` : `${Math.abs(viewport.lat).toFixed(4)}°S`}</span>
-            <span className="text-zinc-600">|</span>
-            <span className="text-zinc-400">LON:</span>
-            <span className="text-white font-bold">{viewport.lon >= 0 ? `${viewport.lon.toFixed(4)}°E` : `${Math.abs(viewport.lon).toFixed(4)}°W`}</span>
-            <span className="text-zinc-600">|</span>
-            <span className="text-zinc-400">ZOOM:</span>
-            <span className="text-cyan-300 font-bold">{viewport.zoom.toFixed(2)}x</span>
-          </div>
+      {/* 2. MAIN WORKSPACE / MAP VIEWPORT */}
+      <div className="relative flex-1 w-full h-full overflow-hidden bg-[#05080e]">
+        
+        {/* TOP LEFT COMMAND & LAYER CONTROLS */}
+        <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 max-w-sm">
+          
+          {/* Header Card */}
+          <div className="bg-[#0b121e]/90 backdrop-blur-md border border-border/70 p-3.5 rounded-xl shadow-2xl">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-rose-500/20 text-rose-400 rounded-lg border border-rose-500/30">
+                  <ShieldAlert className="h-5 w-5" />
+                </div>
+                <div>
+                  <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
+                    Cyber Threat Intelligence Monitor
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-normal">
+                      LIVE HUD
+                    </span>
+                  </h1>
+                  <p className="text-[11px] text-muted-foreground">
+                    Global Attack Surface · Active C2 · Undersea Fiber · Volumetric Floods
+                  </p>
+                </div>
+              </div>
 
-          {/* Quick Location Presets */}
-          <div className="hidden lg:flex items-center gap-1 text-[11px] font-mono">
-            <span className="text-zinc-500 mr-1">PRESET:</span>
-            <button
-              onClick={() => resetToTargetLocation(18.6552, -63.0564, 4.84)}
-              className={cn(
-                "px-2.5 py-1 rounded transition cursor-pointer border",
-                Math.abs(viewport.lat - 18.6552) < 0.1 && Math.abs(viewport.lon - -63.0564) < 0.1
-                  ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/50 font-bold"
-                  : "bg-black/30 text-zinc-400 hover:text-white border-zinc-800"
-              )}
-            >
-              Caribbean & Atlantic (URL)
-            </button>
-            <button
-              onClick={() => resetToTargetLocation(26.5, 56.2, 5.2)}
-              className="px-2 py-1 rounded bg-black/30 text-zinc-400 hover:text-white border border-zinc-800 transition cursor-pointer"
-            >
-              Hormuz & Gulf
-            </button>
-            <button
-              onClick={() => resetToTargetLocation(14.0, 42.5, 4.8)}
-              className="px-2 py-1 rounded bg-black/30 text-zinc-400 hover:text-white border border-zinc-800 transition cursor-pointer"
-            >
-              Red Sea / Suez
-            </button>
-            <button
-              onClick={() => resetToTargetLocation(2.5, 101.5, 5.0)}
-              className="px-2 py-1 rounded bg-black/30 text-zinc-400 hover:text-white border border-zinc-800 transition cursor-pointer"
-            >
-              Malacca Strait
-            </button>
-            <button
-              onClick={() => resetToTargetLocation(20.0, 10.0, 1.8)}
-              className="px-2 py-1 rounded bg-black/30 text-zinc-400 hover:text-white border border-zinc-800 transition cursor-pointer"
-            >
-              Global 360°
-            </button>
-          </div>
-        </div>
-
-        {/* Center / Right: TimeRange Selector & Search Filter */}
-        <div className="flex items-center gap-2">
-          {/* TimeRange Slider / Segmented Control */}
-          <div className="flex items-center bg-black/60 border border-zinc-800 p-0.5 rounded-lg text-xs font-mono">
-            <span className="text-zinc-500 px-2 flex items-center gap-1 text-[10px]">
-              <Clock className="w-3 h-3 text-zinc-400" />
-              RANGE:
-            </span>
-            {(['1h', '24h', '7d', '30d', '1y'] as const).map(tr => (
               <button
-                key={tr}
-                onClick={() => setTimeRange(tr)}
+                onClick={() => setFilterDrawerOpen(!filterDrawerOpen)}
                 className={cn(
-                  "px-2.5 py-1 rounded transition cursor-pointer",
-                  timeRange === tr
-                    ? "bg-white/20 text-white font-bold shadow-xs"
-                    : "text-zinc-400 hover:text-zinc-200"
+                  "p-2 rounded-lg border text-xs font-medium transition-all flex items-center gap-1.5",
+                  filterDrawerOpen ? "bg-primary text-primary-foreground border-primary" : "bg-secondary/60 hover:bg-secondary border-border text-foreground"
                 )}
+                title="Toggle Threat Layers"
               >
-                {tr}
+                <Layers className="h-4 w-4" />
+                <span className="text-xs font-semibold">Layers</span>
               </button>
-            ))}
+            </div>
+
+            {/* Quick Search Bar */}
+            <div className="mt-3 relative">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search C2 IPs, APTs, CVE-2024-*, ASNs..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[#070b12] border border-border/80 rounded-lg pl-8 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:border-rose-500"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-2 text-muted-foreground hover:text-foreground text-xs"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Quick Search */}
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search global assets..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="bg-black/60 border border-zinc-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-cyan-500/60 w-44 sm:w-56"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white p-0.5"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ============================================================== */}
-      {/* 3. MULTI-LAYER CONTROLS BAR (12 REQUESTED URL LAYERS)          */}
-      {/* ============================================================== */}
-      <div className="p-2 px-4 border-b border-zinc-800/80 bg-zinc-950/80 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar shrink-0 z-20">
-        <div className="flex items-center gap-1.5 shrink-0">
-          <div className="flex items-center gap-1 pr-2 border-r border-zinc-800 text-[10px] font-mono text-zinc-500">
-            <Layers className="w-3 h-3 text-zinc-400" />
-            <span>LAYERS ({activeLayers.size}/12):</span>
-            <button
-              onClick={selectAllLayers}
-              className="text-cyan-400 hover:underline cursor-pointer ml-1"
-            >
-              All
-            </button>
-            <span>·</span>
-            <button
-              onClick={clearAllLayers}
-              className="text-zinc-400 hover:underline cursor-pointer"
-            >
-              Clear
-            </button>
-          </div>
-
-          {ALL_LAYERS_CONFIG.map(layer => {
-            const isActive = activeLayers.has(layer.id);
-            const Icon = layer.icon;
-
-            return (
+          {/* Quick Active Threat Pills */}
+          <div className="flex flex-wrap gap-1.5 max-w-md">
+            {ALL_CYBER_LAYERS_CONFIG.slice(0, 5).map(layer => (
               <button
                 key={layer.id}
                 onClick={() => toggleLayer(layer.id)}
                 className={cn(
-                  "px-2.5 py-1 rounded-md text-[11px] font-mono transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 border",
-                  isActive
-                    ? "bg-white/10 border-zinc-600 text-white font-semibold shadow-xs"
-                    : "bg-black/30 border-zinc-800/80 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700"
+                  "px-2.5 py-1 rounded-md text-[11px] font-mono font-medium border transition-all flex items-center gap-1.5 backdrop-blur-md shadow-sm",
+                  enabledLayers[layer.id]
+                    ? `${layer.badgeColor} shadow-rose-950/20`
+                    : "bg-[#0b121e]/80 border-border/40 text-muted-foreground opacity-60 hover:opacity-100"
                 )}
               >
-                <Icon className={cn("w-3 h-3", isActive ? layer.color : "text-zinc-600")} />
+                <layer.icon className="h-3 w-3" />
                 <span>{layer.label}</span>
-                <span className={cn(
-                  "text-[9px] px-1 rounded",
-                  isActive ? "bg-white/10 text-zinc-300" : "text-zinc-600"
-                )}>
-                  {layer.count}
-                </span>
+                <span className="text-[10px] opacity-75 font-bold">({layer.count})</span>
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* ============================================================== */}
-      {/* 4. MAIN MAP CANVAS & SITUATION TELEMETRY VIEWPORT              */}
-      {/* ============================================================== */}
-      <div className="flex-1 relative overflow-hidden flex">
-        {/* The Interactive Global Vector Map Canvas */}
+        {/* TOP RIGHT TIME & EVENT DRAWER TOGGLE */}
+        <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+          {/* Time Range Selector */}
+          <div className="bg-[#0b121e]/90 backdrop-blur-md border border-border/70 rounded-xl p-1 flex items-center shadow-lg">
+            {(['1h', '6h', '24h', '7d'] as const).map(tr => (
+              <button
+                key={tr}
+                onClick={() => {
+                  setTimeRange(tr);
+                  updateUrlParams(lat, lon, zoom);
+                }}
+                className={cn(
+                  "px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all",
+                  timeRange === tr ? "bg-rose-500/20 text-rose-300 border border-rose-500/40" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {tr.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
+          {/* Situation Log Toggle */}
+          <button
+            onClick={() => setEventsDrawerOpen(!eventsDrawerOpen)}
+            className="bg-[#0b121e]/90 backdrop-blur-md border border-border/70 hover:border-rose-500/50 p-2 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-lg"
+          >
+            <Activity className="h-4 w-4 text-rose-400 animate-pulse" />
+            <span className="hidden sm:inline">CTI Alerts</span>
+            <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+              {GLOBAL_CYBER_EVENTS.length}
+            </span>
+          </button>
+        </div>
+
+        {/* BOTTOM RIGHT COORDINATE & VIEW HUD CONTROLS */}
+        <div className="absolute bottom-6 right-6 z-20 flex flex-col items-end gap-2">
+          {/* Coordinate HUD */}
+          <div className="bg-[#0b121e]/90 backdrop-blur-md border border-border/70 rounded-xl px-3 py-2 text-xs font-mono shadow-2xl flex items-center gap-4 text-muted-foreground">
+            <div>
+              <span className="text-slate-400 font-bold">LAT: </span>
+              <span className="text-foreground">{lat.toFixed(4)}°</span>
+            </div>
+            <div>
+              <span className="text-slate-400 font-bold">LON: </span>
+              <span className="text-foreground">{lon.toFixed(4)}°</span>
+            </div>
+            <div>
+              <span className="text-slate-400 font-bold">ZOOM: </span>
+              <span className="text-rose-400 font-bold">{zoom.toFixed(2)}x</span>
+            </div>
+          </div>
+
+          {/* Navigation & Zoom Bar */}
+          <div className="bg-[#0b121e]/90 backdrop-blur-md border border-border/70 rounded-xl p-1.5 flex items-center gap-1 shadow-2xl">
+            <button
+              onClick={() => handleZoom(1.0)}
+              className="p-2 hover:bg-secondary rounded-lg text-foreground transition-colors"
+              title="Zoom In"
+            >
+              <ZoomIn className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => handleZoom(-1.0)}
+              className="p-2 hover:bg-secondary rounded-lg text-foreground transition-colors"
+              title="Zoom Out"
+            >
+              <ZoomOut className="h-4 w-4" />
+            </button>
+            <div className="w-px h-5 bg-border/60 mx-1" />
+            <button
+              onClick={handleResetView}
+              className="p-2 hover:bg-secondary rounded-lg text-foreground transition-colors"
+              title="Reset Tactical View"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* 3. INTERACTIVE SVG VECTOR TACTICAL MAP */}
         <div
-          className="flex-1 h-full relative cursor-grab active:cursor-grabbing bg-[#030712]"
+          className="w-full h-full cursor-grab active:cursor-grabbing overflow-hidden"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
         >
-          {/* Subtle Radial Vignette & Grid */}
-          <div
-            className="absolute inset-0 pointer-events-none opacity-20"
-            style={{
-              backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(56, 189, 248, 0.15) 1px, transparent 0)',
-              backgroundSize: '32px 32px'
-            }}
-          />
-
           <svg
-            ref={mapSvgRef}
-            className="w-full h-full select-none"
+            className="w-full h-full"
             viewBox="0 0 1000 500"
-            preserveAspectRatio="xMidYMid slice"
+            preserveAspectRatio="xMidYMid meet"
+            style={{
+              transform: `scale(${zoom / 2.5}) translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`,
+              transformOrigin: '50% 50%',
+              transition: isPanning ? 'none' : 'transform 0.15s ease-out'
+            }}
           >
             <defs>
-              {/* Gradients for subsea cables and energy pipelines */}
-              <linearGradient id="cableGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.9" />
-                <stop offset="50%" stopColor="#38bdf8" stopOpacity="0.8" />
-                <stop offset="100%" stopColor="#818cf8" stopOpacity="0.9" />
-              </linearGradient>
+              {/* Tactical Grids */}
+              <pattern id="cyber-grid" width="25" height="25" patternUnits="userSpaceOnUse">
+                <path d="M 25 0 L 0 0 0 25" fill="none" stroke="rgba(255, 255, 255, 0.03)" strokeWidth="0.5" />
+              </pattern>
+              
+              {/* Radial Gradients for Cyber Events */}
+              <radialGradient id="c2-pulse" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.8" />
+                <stop offset="50%" stopColor="#e11d48" stopOpacity="0.3" />
+                <stop offset="100%" stopColor="#9f1239" stopOpacity="0" />
+              </radialGradient>
 
-              <linearGradient id="pipelineGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.9" />
-                <stop offset="50%" stopColor="#f59e0b" stopOpacity="0.85" />
-                <stop offset="100%" stopColor="#d97706" stopOpacity="0.9" />
-              </linearGradient>
+              <radialGradient id="jamming-radial" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+                <stop offset="70%" stopColor="#059669" stopOpacity="0.1" />
+                <stop offset="100%" stopColor="#047857" stopOpacity="0" />
+              </radialGradient>
 
-              <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="2.5" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
+              <linearGradient id="cable-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#06b6d4" />
+                <stop offset="50%" stopColor="#38bdf8" />
+                <stop offset="100%" stopColor="#0284c7" />
+              </linearGradient>
             </defs>
 
-            {/* Latitude / Longitude Tactical Graticules */}
-            <g className="opacity-15 stroke-zinc-700 stroke-[0.5]" strokeDasharray="3 3">
-              {/* Parallels (Equator, Tropics, Arctic) */}
-              {[-60, -30, 0, 30, 60].map(lat => {
-                const p1 = projectGeo({ lat, lon: -180 });
-                const p2 = projectGeo({ lat, lon: 180 });
-                return <line key={`lat-${lat}`} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} />;
-              })}
-              {/* Meridians (Prime meridian, international date line) */}
-              {[-120, -60, 0, 60, 120].map(lon => {
-                const p1 = projectGeo({ lat: 85, lon });
-                const p2 = projectGeo({ lat: -85, lon });
-                return <line key={`lon-${lon}`} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} />;
-              })}
+            {/* Ocean Background & Grid */}
+            <rect width="1000" height="500" fill="#05080e" />
+            <rect width="1000" height="500" fill="url(#cyber-grid)" />
+
+            {/* World Landmasses */}
+            <g className="landmasses" fill="#0d1524" stroke="#1e293b" strokeWidth="0.8">
+              {WORLD_LANDMASS_PATHS.map((pathStr, i) => (
+                <path key={i} d={pathStr} className="hover:fill-[#131e33] transition-colors" />
+              ))}
             </g>
 
-            {/* Simplified Global Continental Landmasses */}
-            <g className="fill-zinc-900/90 stroke-zinc-700/60 stroke-[0.8] transition-all duration-300">
-              {WORLD_LANDMASS_PATHS.map((pathD, idx) => {
-                return (
-                  <path
-                    key={`landmass-${idx}`}
-                    d={pathD}
-                    transform={`translate(${500 - (viewport.lon + 180) * (viewport.zoom / 2.5) * (1000 / 360) + (1000 / 2) * (viewport.zoom / 2.5 - 1)}, ${250 - (90 - viewport.lat) * (viewport.zoom / 2.5) * (500 / 180) + (500 / 2) * (viewport.zoom / 2.5 - 1)}) scale(${viewport.zoom / 2.5})`}
-                    className="opacity-95 hover:fill-zinc-800 transition-colors"
-                  />
-                );
-              })}
-            </g>
+            {/* LAYER: GNSS / GPS JAMMING ZONES (CONCENTRIC PULSES) */}
+            {enabledLayers.gnssJamming && GNSS_JAMMING_ZONES.map((zone) => {
+              const { x, y } = projectGeo(zone.coordinates);
+              const radiusSvg = zone.radiusKm / 20;
+              return (
+                <g
+                  key={zone.id}
+                  className="cursor-pointer group"
+                  onClick={() => { setSelectedAsset(zone); setSelectedLayerType('gnssJamming'); }}
+                >
+                  <circle cx={x} cy={y} r={radiusSvg} fill="url(#jamming-radial)" stroke="#10b981" strokeWidth="1" strokeDasharray="3 3">
+                    <animate attributeName="r" values={`${radiusSvg * 0.8};${radiusSvg * 1.2};${radiusSvg * 0.8}`} dur="4s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx={x} cy={y} r="3" fill="#10b981" />
+                  <text x={x} y={y - radiusSvg - 3} fill="#34d399" fontSize="6" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+                    [EW: {zone.regionName.split(' ')[0]}]
+                  </text>
+                </g>
+              );
+            })}
 
-            {/* LAYER 1: SUBSEA FIBER OPTIC CABLES */}
-            {activeLayers.has('cables') && filteredCables.map(cable => {
-              const pts = cable.pathCoordinates.map(projectGeo);
-              if (pts.length < 2) return null;
-              const pathStr = pts.reduce((acc, pt, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`, '');
+            {/* LAYER: SUBSEA TELECOM FIBER CABLES */}
+            {enabledLayers.cables && SUBSEA_CABLES.map((cable) => {
+              const points = cable.pathCoordinates.map(projectGeo);
+              const pathD = points.reduce((acc, p, idx) => `${acc} ${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`, '');
+              const isCut = cable.status === 'cut';
 
               return (
                 <g
-                  key={`cable-${cable.id}`}
+                  key={cable.id}
                   className="cursor-pointer group"
-                  onClick={() => {
-                    setSelectedEntity(cable);
-                    setSelectedEntityType('cables');
-                  }}
+                  onClick={() => { setSelectedAsset(cable); setSelectedLayerType('cables'); }}
                 >
-                  {/* Outer glow line */}
+                  {/* Outer Glow */}
                   <path
-                    d={pathStr}
+                    d={pathD}
                     fill="none"
-                    stroke="#22d3ee"
-                    strokeWidth="3.5"
-                    strokeOpacity="0.3"
-                    className="group-hover:stroke-opacity-70 transition-all"
+                    stroke={isCut ? "#f43f5e" : "#06b6d4"}
+                    strokeWidth="3"
+                    strokeOpacity={isCut ? "0.6" : "0.25"}
                   />
-                  {/* Core fiber optic line */}
+                  {/* Core Line */}
                   <path
-                    d={pathStr}
+                    d={pathD}
                     fill="none"
-                    stroke="url(#cableGlow)"
-                    strokeWidth={cable.status === 'degraded' ? "1.5" : "2"}
-                    strokeDasharray={cable.status === 'degraded' ? "6 3" : "none"}
-                    className={cable.status === 'degraded' ? "animate-pulse" : ""}
+                    stroke={isCut ? "#f43f5e" : "url(#cable-gradient)"}
+                    strokeWidth="1.2"
+                    strokeDasharray={isCut ? "4 3" : "none"}
                   />
-                  {/* Landing point beacons */}
-                  {cable.landingPoints.map(lp => {
-                    const pos = projectGeo(lp.coordinates);
+                  {/* Landing points */}
+                  {cable.landingPoints.map((lp, idx) => {
+                    const lpos = projectGeo(lp.coordinates);
                     return (
                       <circle
-                        key={`lp-${cable.id}-${lp.name}`}
-                        cx={pos.x}
-                        cy={pos.y}
-                        r="3"
-                        fill="#38bdf8"
-                        stroke="#030712"
-                        strokeWidth="1.5"
+                        key={idx}
+                        cx={lpos.x}
+                        cy={lpos.y}
+                        r="2.2"
+                        fill={isCut ? "#f43f5e" : "#38bdf8"}
+                        stroke="#0a0f18"
+                        strokeWidth="0.8"
                       />
                     );
                   })}
-                </g>
-              );
-            })}
-
-            {/* LAYER 2: ENERGY PIPELINES */}
-            {activeLayers.has('pipelines') && filteredPipelines.map(pipe => {
-              const pts = pipe.pathCoordinates.map(projectGeo);
-              if (pts.length < 2) return null;
-              const pathStr = pts.reduce((acc, pt, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`, '');
-
-              return (
-                <g
-                  key={`pipe-${pipe.id}`}
-                  className="cursor-pointer group"
-                  onClick={() => {
-                    setSelectedEntity(pipe);
-                    setSelectedEntityType('pipelines');
-                  }}
-                >
-                  <path
-                    d={pathStr}
-                    fill="none"
-                    stroke="#f59e0b"
-                    strokeWidth="4"
-                    strokeOpacity="0.25"
-                    className="group-hover:stroke-opacity-60 transition-all"
-                  />
-                  <path
-                    d={pathStr}
-                    fill="none"
-                    stroke={pipe.status === 'sabotage_offline' ? '#ef4444' : 'url(#pipelineGlow)'}
-                    strokeWidth="2.2"
-                    strokeDasharray={pipe.status === 'sabotage_offline' ? "4 4" : "none"}
-                  />
-                </g>
-              );
-            })}
-
-            {/* LAYER 3: MARITIME CHOKEPOINTS & TRADE ROUTES */}
-            {activeLayers.has('tradeRoutes') && filteredChokepoints.map(cp => {
-              const pos = projectGeo(cp.coordinates);
-              const isHighRisk = cp.status === 'high_risk';
-
-              return (
-                <g
-                  key={`cp-${cp.id}`}
-                  transform={`translate(${pos.x}, ${pos.y})`}
-                  className="cursor-pointer group"
-                  onClick={() => {
-                    setSelectedEntity(cp);
-                    setSelectedEntityType('tradeRoutes');
-                  }}
-                >
-                  {/* Radar pulse beacon */}
-                  <circle
-                    r="8"
-                    fill="none"
-                    stroke={isHighRisk ? '#f43f5e' : '#fbbf24'}
-                    strokeWidth="1.5"
-                    className="animate-ping opacity-60"
-                  />
-                  <polygon
-                    points="0,-6 6,0 0,6 -6,0"
-                    fill={isHighRisk ? '#f43f5e' : '#fbbf24'}
-                    stroke="#030712"
-                    strokeWidth="1.5"
-                  />
-                  {/* Label */}
-                  <text
-                    y="-9"
-                    textAnchor="middle"
-                    className="fill-zinc-300 text-[8px] font-mono font-bold tracking-tight pointer-events-none group-hover:fill-white"
-                  >
-                    {cp.name}
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* LAYER 4: STOCK EXCHANGES (29 Major Global Bourses) */}
-            {activeLayers.has('stockExchanges') && filteredExchanges.map(ex => {
-              const pos = projectGeo(ex.coordinates);
-              const isOpen = ex.status === 'OPEN';
-
-              return (
-                <g
-                  key={`ex-${ex.id}`}
-                  transform={`translate(${pos.x}, ${pos.y})`}
-                  className="cursor-pointer group"
-                  onClick={() => {
-                    setSelectedEntity(ex);
-                    setSelectedEntityType('stockExchanges');
-                  }}
-                >
-                  <circle
-                    r="5"
-                    fill={isOpen ? '#10b981' : '#64748b'}
-                    stroke="#030712"
-                    strokeWidth="1.5"
-                    className={isOpen ? "ring-2 ring-emerald-400" : ""}
-                  />
-                  {isOpen && (
-                    <circle
-                      r="9"
-                      fill="none"
-                      stroke="#10b981"
-                      strokeWidth="1"
-                      className="animate-ping opacity-50"
-                    />
+                  {/* Severed Badge if cut */}
+                  {isCut && (
+                    <g transform={`translate(${points[Math.floor(points.length / 2)].x}, ${points[Math.floor(points.length / 2)].y})`}>
+                      <rect x="-24" y="-8" width="48" height="12" rx="3" fill="#881337" stroke="#f43f5e" strokeWidth="0.8" />
+                      <text x="0" y="1" fill="#fff" fontSize="5" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+                        ⚡ FIBER SEVER
+                      </text>
+                    </g>
                   )}
-                  {/* Mini bourses tag */}
-                  <text
-                    y="12"
-                    textAnchor="middle"
-                    className={cn(
-                      "text-[8px] font-mono font-bold pointer-events-none transition-colors",
-                      isOpen ? "fill-emerald-300" : "fill-zinc-400"
-                    )}
-                  >
-                    {ex.mic} (${ex.marketCapTrillion}T)
-                  </text>
                 </g>
               );
             })}
 
-            {/* LAYER 5: CENTRAL BANKS & POLICY BENCHMARKS */}
-            {activeLayers.has('centralBanks') && filteredCentralBanks.map(cb => {
-              const pos = projectGeo(cb.coordinates);
+            {/* LAYER: VOLUMETRIC DDOS ATTACK ARCS */}
+            {enabledLayers.ddos && filteredDdos.map((ddos) => {
+              const origin = projectGeo(ddos.originCoordinates);
+              const target = projectGeo(ddos.coordinates);
+              const midX = (origin.x + target.x) / 2;
+              const midY = Math.min(origin.y, target.y) - 40;
+              const arcPath = `M ${origin.x} ${origin.y} Q ${midX} ${midY} ${target.x} ${target.y}`;
 
               return (
                 <g
-                  key={`cb-${cb.id}`}
-                  transform={`translate(${pos.x}, ${pos.y})`}
+                  key={ddos.id}
                   className="cursor-pointer group"
-                  onClick={() => {
-                    setSelectedEntity(cb);
-                    setSelectedEntityType('centralBanks');
-                  }}
+                  onClick={() => { setSelectedAsset(ddos); setSelectedLayerType('ddos'); }}
                 >
-                  <rect
-                    x="-6"
-                    y="-6"
-                    width="12"
-                    height="12"
-                    rx="2"
-                    fill="#0284c7"
-                    stroke="#38bdf8"
-                    strokeWidth="1.2"
-                  />
-                  <text
-                    y="-9"
-                    textAnchor="middle"
-                    className="fill-sky-300 text-[8px] font-mono font-bold pointer-events-none"
-                  >
-                    {cb.country.split(' ')[0]} ({cb.benchmarkRatePercent}%)
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* LAYER 6: FINANCIAL CENTERS */}
-            {activeLayers.has('financialCenters') && FINANCIAL_CENTERS.map(fc => {
-              const pos = projectGeo(fc.coordinates);
-
-              return (
-                <g
-                  key={`fc-${fc.id}`}
-                  transform={`translate(${pos.x}, ${pos.y})`}
-                  className="cursor-pointer group"
-                  onClick={() => {
-                    setSelectedEntity(fc);
-                    setSelectedEntityType('financialCenters');
-                  }}
-                >
-                  <circle
-                    r="6"
-                    fill="#a855f7"
-                    fillOpacity="0.8"
-                    stroke="#d8b4fe"
-                    strokeWidth="1.5"
-                  />
-                  <text
-                    y="14"
-                    textAnchor="middle"
-                    className="fill-purple-300 text-[8px] font-mono font-medium pointer-events-none"
-                  >
-                    #{fc.globalRank} {fc.city}
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* LAYER 7: INFRASTRUCTURE OUTAGES & CUTS */}
-            {activeLayers.has('outages') && INFRASTRUCTURE_OUTAGES.map(out => {
-              const pos = projectGeo(out.coordinates);
-
-              return (
-                <g
-                  key={`outage-${out.id}`}
-                  transform={`translate(${pos.x}, ${pos.y})`}
-                  className="cursor-pointer group"
-                  onClick={() => {
-                    setSelectedEntity(out);
-                    setSelectedEntityType('outages');
-                  }}
-                >
-                  <circle r="12" fill="#ef4444" fillOpacity="0.25" className="animate-ping" />
-                  <circle r="6" fill="#ef4444" stroke="#ffffff" strokeWidth="1.5" />
-                  <text y="-8" textAnchor="middle" className="fill-red-400 text-[8px] font-mono font-bold">
-                    ⚡ OUTAGE
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* LAYER 8: EXTREME WEATHER & STORMS */}
-            {activeLayers.has('weather') && WEATHER_SYSTEMS.map(ws => {
-              const pos = projectGeo(ws.coordinates);
-
-              return (
-                <g
-                  key={`ws-${ws.id}`}
-                  transform={`translate(${pos.x}, ${pos.y})`}
-                  className="cursor-pointer group"
-                  onClick={() => {
-                    setSelectedEntity(ws);
-                    setSelectedEntityType('weather');
-                  }}
-                >
-                  <circle
-                    r="14"
+                  {/* Attack Trajectory Arc */}
+                  <path
+                    d={arcPath}
                     fill="none"
-                    stroke="#2dd4bf"
+                    stroke="#fbbf24"
                     strokeWidth="1.5"
                     strokeDasharray="4 2"
-                    className="animate-spin"
-                    style={{ transformOrigin: `${pos.x}px ${pos.y}px`, animationDuration: '6s' }}
-                  />
-                  <circle r="4" fill="#14b8a6" stroke="#042f2e" strokeWidth="1.5" />
-                  <text y="15" textAnchor="middle" className="fill-teal-300 text-[8px] font-mono">
-                    {ws.name} ({ws.windSpeedKnots}kt)
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* LAYER 9: NATURAL HAZARDS (Quakes & Volcanoes) */}
-            {activeLayers.has('natural') && NATURAL_HAZARDS.map(nh => {
-              const pos = projectGeo(nh.coordinates);
-
-              return (
-                <g
-                  key={`nh-${nh.id}`}
-                  transform={`translate(${pos.x}, ${pos.y})`}
-                  className="cursor-pointer group"
-                  onClick={() => {
-                    setSelectedEntity(nh);
-                    setSelectedEntityType('natural');
-                  }}
-                >
-                  <circle r="8" fill="none" stroke="#f97316" strokeWidth="1.5" className="animate-ping" />
-                  <polygon points="0,-5 5,4 -5,4" fill="#f97316" stroke="#431407" strokeWidth="1" />
-                  <text y="14" textAnchor="middle" className="fill-orange-300 text-[8px] font-mono">
-                    {nh.name}
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* LAYER 10: WATERWAYS */}
-            {activeLayers.has('waterways') && STRATEGIC_WATERWAYS.map(sw => {
-              const pos = projectGeo(sw.coordinates);
-
-              return (
-                <g
-                  key={`sw-${sw.id}`}
-                  transform={`translate(${pos.x}, ${pos.y})`}
-                  className="cursor-pointer group"
-                  onClick={() => {
-                    setSelectedEntity(sw);
-                    setSelectedEntityType('waterways');
-                  }}
-                >
-                  <circle r="4" fill="#3b82f6" stroke="#1e3a8a" strokeWidth="1.5" />
-                  <text y="-7" textAnchor="middle" className="fill-blue-300 text-[8px] font-mono">
-                    {sw.name}
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* LAYER 11: SANCTIONS & MARITIME WATCHLISTS */}
-            {activeLayers.has('sanctions') && SANCTION_REGIMES.map(sr => {
-              const pos = projectGeo(sr.coordinates);
-
-              return (
-                <g
-                  key={`sr-${sr.id}`}
-                  transform={`translate(${pos.x}, ${pos.y})`}
-                  className="cursor-pointer group"
-                  onClick={() => {
-                    setSelectedEntity(sr);
-                    setSelectedEntityType('sanctions');
-                  }}
-                >
-                  <circle r="5" fill="#d946ef" stroke="#701a75" strokeWidth="1.5" />
-                  <text y="12" textAnchor="middle" className="fill-fuchsia-300 text-[8px] font-mono">
-                    {sr.authority} ({sr.shadowFleetTankersTracked} tankers)
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* LAYER 12: MACROECONOMIC SOVEREIGN TAGS */}
-            {activeLayers.has('economic') && MACRO_METRICS.map(mm => {
-              const pos = projectGeo(mm.coordinates);
-
-              return (
-                <g
-                  key={`mm-${mm.id}`}
-                  transform={`translate(${pos.x}, ${pos.y})`}
-                  className="cursor-pointer group"
-                  onClick={() => {
-                    setSelectedEntity(mm);
-                    setSelectedEntityType('economic');
-                  }}
-                >
-                  <text
-                    textAnchor="middle"
-                    className="fill-lime-400 text-[9px] font-mono font-bold bg-black/60"
+                    strokeOpacity="0.85"
                   >
-                    {mm.code}: ${mm.gdpTrillion}T ({mm.gdpGrowthPercent > 0 ? '+' : ''}{mm.gdpGrowthPercent}%)
+                    <animate attributeName="stroke-dashoffset" values="0;-20" dur="1s" repeatCount="indefinite" />
+                  </path>
+                  {/* Target Impact Marker */}
+                  <circle cx={target.x} cy={target.y} r="10" fill="none" stroke="#f59e0b" strokeWidth="1">
+                    <animate attributeName="r" values="3;14;3" dur="1.8s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="1;0;1" dur="1.8s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx={target.x} cy={target.y} r="3.5" fill="#f59e0b" />
+                  <text x={target.x} y={target.y - 12} fill="#fbbf24" fontSize="5.5" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+                    ⚔️ {ddos.peakBandwidthTbps} Tbps [{ddos.attackType.split(' ')[0]}]
                   </text>
                 </g>
               );
             })}
 
-            {/* User Target Pin Marker at lat=18.6552, lon=-63.0564 */}
-            {(() => {
-              const targetPos = projectGeo({ lat: 18.6552, lon: -63.0564 });
+            {/* LAYER: C2 BOTNET SERVERS & CLUSTERS */}
+            {enabledLayers.botnets && filteredC2.map((c2) => {
+              const { x, y } = projectGeo(c2.coordinates);
               return (
-                <g transform={`translate(${targetPos.x}, ${targetPos.y})`} className="pointer-events-none">
-                  <circle r="16" fill="none" stroke="#22d3ee" strokeWidth="1" className="animate-ping opacity-75" />
-                  <circle r="7" fill="#0891b2" stroke="#ffffff" strokeWidth="2" />
-                  <line x1="-12" y1="0" x2="12" y2="0" stroke="#22d3ee" strokeWidth="1.5" />
-                  <line x1="0" y1="-12" x2="0" y2="12" stroke="#22d3ee" strokeWidth="1.5" />
-                  <text y="-14" textAnchor="middle" className="fill-cyan-300 text-[9px] font-mono font-bold">
-                    ★ 18.6552°N, 63.0564°W
+                <g
+                  key={c2.id}
+                  className="cursor-pointer group"
+                  onClick={() => { setSelectedAsset(c2); setSelectedLayerType('botnets'); }}
+                >
+                  <circle cx={x} cy={y} r="12" fill="url(#c2-pulse)">
+                    <animate attributeName="r" values="6;16;6" dur="2s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx={x} cy={y} r="3.5" fill="#e11d48" stroke="#fff" strokeWidth="0.8" />
+                  <text x={x} y={y - 8} fill="#f43f5e" fontSize="5" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+                    ☠️ {c2.malwareFamily} ({c2.activeBeaconsCount})
                   </text>
                 </g>
               );
-            })()}
+            })}
+
+            {/* LAYER: NATION-STATE APT CAMPAIGNS */}
+            {enabledLayers.aptActors && filteredApt.map((apt) => {
+              const { x, y } = projectGeo(apt.coordinates);
+              return (
+                <g
+                  key={apt.id}
+                  className="cursor-pointer group"
+                  onClick={() => { setSelectedAsset(apt); setSelectedLayerType('aptActors'); }}
+                >
+                  <circle cx={x} cy={y} r="7" fill="none" stroke="#a855f7" strokeWidth="1" strokeDasharray="2 2">
+                    <animate attributeName="stroke-dashoffset" values="0;20" dur="3s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx={x} cy={y} r="3" fill="#9333ea" />
+                  <text x={x} y={y + 10} fill="#c084fc" fontSize="5.5" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+                    🎯 {apt.name}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* LAYER: ZERO-DAY & CISA KEV EXPLOITS */}
+            {enabledLayers.zeroDays && filteredZeroDays.map((zd) => {
+              const { x, y } = projectGeo(zd.coordinates);
+              return (
+                <g
+                  key={zd.id}
+                  className="cursor-pointer group"
+                  onClick={() => { setSelectedAsset(zd); setSelectedLayerType('zeroDays'); }}
+                >
+                  <rect x={x - 4} y={y - 4} width="8" height="8" fill="#f97316" transform={`rotate(45 ${x} ${y})`} stroke="#fff" strokeWidth="0.8" />
+                  <text x={x} y={y - 8} fill="#fb923c" fontSize="5" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+                    🔥 {zd.cveId.split(' ')[0]} (CVSS {zd.cvssScore})
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* LAYER: RANSOMWARE CARTELS */}
+            {enabledLayers.ransomware && RANSOMWARE_CARTELS.map((rc) => {
+              const { x, y } = projectGeo(rc.coordinates);
+              return (
+                <g
+                  key={rc.id}
+                  className="cursor-pointer group"
+                  onClick={() => { setSelectedAsset(rc); setSelectedLayerType('ransomware'); }}
+                >
+                  <polygon
+                    points={`${x},${y-5} ${x+4},${y+4} ${x-4},${y+4}`}
+                    fill="#dc2626"
+                    stroke="#fee2e2"
+                    strokeWidth="0.8"
+                  />
+                  <text x={x} y={y + 11} fill="#ef4444" fontSize="5" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+                    🔒 {rc.gangName.split(' ')[0]}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* LAYER: BGP ROUTE HIJACKS */}
+            {enabledLayers.bgpHijacks && BGP_HIJACKS.map((bgp) => {
+              const { x, y } = projectGeo(bgp.coordinates);
+              return (
+                <g
+                  key={bgp.id}
+                  className="cursor-pointer group"
+                  onClick={() => { setSelectedAsset(bgp); setSelectedLayerType('bgpHijacks'); }}
+                >
+                  <circle cx={x} cy={y} r="8" fill="none" stroke="#eab308" strokeWidth="1.2">
+                    <animate attributeName="r" values="3;10;3" dur="2s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx={x} cy={y} r="2.5" fill="#ca8a04" />
+                  <text x={x} y={y - 9} fill="#facc15" fontSize="4.8" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+                    ⚠️ BGP RPKI INVALID
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* LAYER: HONEYPOT SENSOR GRID */}
+            {enabledLayers.honeypots && HONEYPOT_HITS.map((honey) => {
+              const { x, y } = projectGeo(honey.coordinates);
+              return (
+                <g
+                  key={honey.id}
+                  className="cursor-pointer group"
+                  onClick={() => { setSelectedAsset(honey); setSelectedLayerType('honeypots'); }}
+                >
+                  <circle cx={x} cy={y} r="3" fill="#14b8a6" stroke="#ccfbf1" strokeWidth="0.8" />
+                  <text x={x} y={y + 8} fill="#2dd4bf" fontSize="4.5" fontFamily="monospace" textAnchor="middle">
+                    📡 {honey.sensorType.split('/')[0]} ({honey.hitsLastHour}/h)
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* LAYER: CLOUD & INFRASTRUCTURE OUTAGES */}
+            {enabledLayers.cloudOutages && INFRASTRUCTURE_OUTAGES.map((outage) => {
+              const { x, y } = projectGeo(outage.coordinates);
+              return (
+                <g
+                  key={outage.id}
+                  className="cursor-pointer group"
+                  onClick={() => { setSelectedAsset(outage); setSelectedLayerType('cloudOutages'); }}
+                >
+                  <circle cx={x} cy={y} r="4" fill="#3b82f6" stroke="#93c5fd" strokeWidth="0.8" />
+                  <text x={x} y={y - 6} fill="#60a5fa" fontSize="4.8" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+                    ⚡ OUTAGE ({outage.impactedTrafficPct}%)
+                  </text>
+                </g>
+              );
+            })}
           </svg>
-
-          {/* Map Controls Float Overlay (Zoom + / -, Reset, Center) */}
-          <div className="absolute right-4 bottom-4 flex flex-col gap-1.5 z-20">
-            <button
-              onClick={() => handleZoom(0.8)}
-              className="w-8 h-8 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white flex items-center justify-center transition cursor-pointer shadow-lg"
-              title="Zoom In"
-            >
-              <ZoomIn className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => handleZoom(-0.8)}
-              className="w-8 h-8 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white flex items-center justify-center transition cursor-pointer shadow-lg"
-              title="Zoom Out"
-            >
-              <ZoomOut className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => resetToTargetLocation(18.6552, -63.0564, 4.84)}
-              className="w-8 h-8 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700 text-cyan-400 hover:text-cyan-300 flex items-center justify-center transition cursor-pointer shadow-lg"
-              title="Center on URL Target (18.6552°N, 63.0564°W)"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Tactical Map Footnote HUD */}
-          <div className="absolute left-4 bottom-4 bg-zinc-950/90 border border-zinc-800/90 px-3 py-1.5 rounded-lg text-[10px] font-mono text-zinc-400 flex items-center gap-2 backdrop-blur-md shadow-xl z-20">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-            <span>Interactive World Monitor Canvas · Pan & Zoom enabled · Click any infrastructure node to inspect</span>
-          </div>
         </div>
 
-        {/* Right Drawer: Situation Events Feed & Asset Inspector */}
-        <div className="w-80 lg:w-96 border-l border-zinc-800 bg-zinc-950/95 flex flex-col shrink-0 z-30 shadow-2xl">
-          {/* Header */}
-          <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs font-mono font-bold text-white uppercase tracking-wider">
-              <Activity className="w-4 h-4 text-cyan-400" />
-              <span>{selectedEntity ? 'Asset Intelligence Dossier' : 'Global Situation Feed'}</span>
-            </div>
-            {selectedEntity && (
+        {/* 4. LAYER TOGGLE SIDEBAR DRAWER (When User clicks 'Layers') */}
+        {filterDrawerOpen && (
+          <div className="absolute top-16 left-4 z-30 w-80 bg-[#0b121e]/95 backdrop-blur-xl border border-border rounded-xl shadow-2xl p-4 flex flex-col gap-3 max-h-[calc(100%-6rem)] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <div className="flex items-center gap-2">
+                <Layers className="h-4 w-4 text-rose-400" />
+                <h3 className="text-sm font-bold text-white">Threat Intelligence Layers</h3>
+              </div>
               <button
-                onClick={() => setSelectedEntity(null)}
-                className="text-zinc-500 hover:text-white p-1 rounded hover:bg-white/5 transition"
+                onClick={() => setFilterDrawerOpen(false)}
+                className="text-muted-foreground hover:text-white p-1 rounded"
               >
-                <X className="w-4 h-4" />
+                <X className="h-4 w-4" />
               </button>
-            )}
-          </div>
+            </div>
 
-          {/* Body: Deep Asset Inspector or Real-time Events Feed */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-4">
-            {selectedEntity ? (
-              /* Deep Dossier Inspector */
-              <div className="space-y-4 text-xs font-mono">
-                <div className="p-3 rounded-xl bg-zinc-900 border border-zinc-800">
-                  <span className="text-[10px] text-zinc-500 uppercase tracking-widest block font-bold">
-                    {selectedEntityType?.toUpperCase()}
-                  </span>
-                  <h3 className="text-sm font-bold text-white mt-1">
-                    {selectedEntity.name || selectedEntity.title}
-                  </h3>
-                  {selectedEntity.city && selectedEntity.country && (
-                    <p className="text-zinc-400 text-[11px] mt-0.5">
-                      {selectedEntity.city}, {selectedEntity.country}
-                    </p>
-                  )}
-                  {selectedEntity.status && (
-                    <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold text-[10px]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <span>{selectedEntity.status}</span>
-                    </div>
-                  )}
-                </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={enableAllLayers}
+                className="flex-1 py-1 px-2 rounded-lg bg-secondary text-xs font-medium hover:bg-secondary/80 text-foreground"
+              >
+                Enable All
+              </button>
+              <button
+                onClick={disableAllLayers}
+                className="flex-1 py-1 px-2 rounded-lg bg-secondary text-xs font-medium hover:bg-secondary/80 text-foreground"
+              >
+                Disable All
+              </button>
+            </div>
 
-                {/* Stock Exchange Specifics */}
-                {selectedEntityType === 'stockExchanges' && (
-                  <div className="space-y-2">
-                    <div className="p-3 rounded-lg bg-black/40 border border-zinc-800/80 space-y-1">
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Market Capitalization:</span>
-                        <span className="text-white font-bold">${selectedEntity.marketCapTrillion} Trillion</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Primary Benchmark Index:</span>
-                        <span className="text-emerald-400 font-bold">{selectedEntity.primaryIndexName}</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Index Value & 24h:</span>
-                        <span className="text-white font-bold">
-                          {selectedEntity.indexValue} ({selectedEntity.change24hPercent >= 0 ? '+' : ''}{selectedEntity.change24hPercent}%)
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Daily Turnover Volume:</span>
-                        <span className="text-white font-bold">${selectedEntity.volumeTodayBillion}B</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Trading Hours (UTC):</span>
-                        <span className="text-zinc-300">{selectedEntity.tradingHoursUtc}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
+            <div className="flex flex-col gap-1.5 mt-1">
+              {ALL_CYBER_LAYERS_CONFIG.map((layer) => {
+                const isEnabled = enabledLayers[layer.id];
+                const Icon = layer.icon;
 
-                {/* Central Bank Specifics */}
-                {selectedEntityType === 'centralBanks' && (
-                  <div className="space-y-2">
-                    <div className="p-3 rounded-lg bg-black/40 border border-zinc-800/80 space-y-1.5">
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Governor / Chair:</span>
-                        <span className="text-white font-bold">{selectedEntity.governor}</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Target Benchmark Rate:</span>
-                        <span className="text-sky-300 font-bold text-sm">{selectedEntity.benchmarkRatePercent}%</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Monetary Policy Stance:</span>
-                        <span className="text-emerald-400 font-bold">{selectedEntity.stance}</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Balance Sheet Size:</span>
-                        <span className="text-white font-bold">${selectedEntity.balanceSheetTrillion} Trillion</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Next Rate Decision:</span>
-                        <span className="text-amber-300 font-bold">{selectedEntity.nextMeetingDate}</span>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-zinc-400 p-2.5 rounded bg-zinc-900 border border-zinc-800">
-                      {selectedEntity.policySummary}
-                    </p>
-                  </div>
-                )}
-
-                {/* Subsea Cable Specifics */}
-                {selectedEntityType === 'cables' && (
-                  <div className="space-y-2">
-                    <div className="p-3 rounded-lg bg-black/40 border border-zinc-800/80 space-y-1">
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Design Capacity:</span>
-                        <span className="text-cyan-400 font-bold">{selectedEntity.capacityTbps} Tbps</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Cable Length:</span>
-                        <span className="text-white font-bold">{selectedEntity.lengthKm.toLocaleString()} km</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Transoceanic Latency:</span>
-                        <span className="text-emerald-400 font-bold">{selectedEntity.latencyMs} ms RTT</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Ready For Service (RFS):</span>
-                        <span className="text-white font-bold">{selectedEntity.rfsYear}</span>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-zinc-400 p-2.5 rounded bg-zinc-900 border border-zinc-800">
-                      {selectedEntity.description}
-                    </p>
-                  </div>
-                )}
-
-                {/* Pipeline Specifics */}
-                {selectedEntityType === 'pipelines' && (
-                  <div className="space-y-2">
-                    <div className="p-3 rounded-lg bg-black/40 border border-zinc-800/80 space-y-1">
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Commodity Transferred:</span>
-                        <span className="text-amber-400 font-bold uppercase">{selectedEntity.commodityType.replace('_', ' ')}</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Throughput Capacity:</span>
-                        <span className="text-white font-bold">{selectedEntity.capacityThroughput}</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Pipeline Length:</span>
-                        <span className="text-white font-bold">{selectedEntity.lengthKm.toLocaleString()} km</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Origin & Terminus:</span>
-                        <span className="text-zinc-300 truncate max-w-[170px]">{selectedEntity.origin} → {selectedEntity.destination}</span>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-zinc-400 p-2.5 rounded bg-zinc-900 border border-zinc-800">
-                      {selectedEntity.description}
-                    </p>
-                  </div>
-                )}
-
-                {/* Trade Chokepoint Specifics */}
-                {selectedEntityType === 'tradeRoutes' && (
-                  <div className="space-y-2">
-                    <div className="p-3 rounded-lg bg-black/40 border border-zinc-800/80 space-y-1">
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Daily Transit Traffic:</span>
-                        <span className="text-white font-bold">{selectedEntity.dailyVessels} vessels / day</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Average Transit Delay:</span>
-                        <span className="text-rose-400 font-bold">{selectedEntity.transitDelayHours} hours</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Daily Volume:</span>
-                        <span className="text-amber-300 font-bold">{selectedEntity.dailyVolume}</span>
-                      </div>
-                    </div>
-                    {selectedEntity.securityNotice && (
-                      <div className="p-2.5 rounded bg-rose-950/30 border border-rose-500/40 text-rose-300 text-[11px]">
-                        <strong>Maritime Alert:</strong> {selectedEntity.securityNotice}
-                      </div>
+                return (
+                  <button
+                    key={layer.id}
+                    onClick={() => toggleLayer(layer.id)}
+                    className={cn(
+                      "w-full px-3 py-2.5 rounded-lg border text-left transition-all flex items-center justify-between",
+                      isEnabled
+                        ? "bg-[#111c2e] border-rose-500/40 text-white"
+                        : "bg-[#080d16] border-border/40 text-muted-foreground hover:border-border"
                     )}
-                    <p className="text-[11px] text-zinc-400 p-2.5 rounded bg-zinc-900 border border-zinc-800">
-                      {selectedEntity.description}
-                    </p>
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className={cn("p-1.5 rounded-md", isEnabled ? "bg-rose-500/20" : "bg-muted")}>
+                        <Icon className={cn("h-4 w-4", layer.color)} />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold">{layer.label}</div>
+                        <div className="text-[10px] text-muted-foreground font-mono">{layer.count} Active Signatures</div>
+                      </div>
+                    </div>
+
+                    <div className={cn(
+                      "w-4 h-4 rounded border flex items-center justify-center text-[10px] font-bold",
+                      isEnabled ? "bg-rose-500 border-rose-400 text-white" : "border-border text-transparent"
+                    )}>
+                      ✓
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 5. LIVE CTI SITUATION LOG DRAWER */}
+        {eventsDrawerOpen && (
+          <div className="absolute top-16 right-4 z-30 w-96 bg-[#0b121e]/95 backdrop-blur-xl border border-border rounded-xl shadow-2xl p-4 flex flex-col gap-3 max-h-[calc(100%-6rem)] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-rose-400" />
+                <h3 className="text-sm font-bold text-white">Live CTI Flash Alerts</h3>
+              </div>
+              <button
+                onClick={() => setEventsDrawerOpen(false)}
+                className="text-muted-foreground hover:text-white p-1 rounded"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2.5">
+              {GLOBAL_CYBER_EVENTS.map(evt => (
+                <div
+                  key={evt.id}
+                  onClick={() => {
+                    setLat(evt.coordinates.lat);
+                    setLon(evt.coordinates.lon);
+                    setZoom(6.5);
+                    updateUrlParams(evt.coordinates.lat, evt.coordinates.lon, 6.5);
+                  }}
+                  className="p-3 bg-[#080d16] hover:bg-[#111c2e] border border-border/60 hover:border-rose-500/50 rounded-lg cursor-pointer transition-all"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                      {evt.threatType}
+                    </span>
+                    <span className="text-[10px] font-mono text-muted-foreground">{evt.timestamp}</span>
+                  </div>
+                  <h4 className="text-xs font-semibold text-white leading-snug mb-1">{evt.headline}</h4>
+                  <p className="text-[11px] text-muted-foreground line-clamp-2">{evt.description}</p>
+                  <div className="mt-2 text-[10px] text-rose-400 font-mono font-bold flex items-center gap-1">
+                    <span>Source: {evt.source}</span>
+                    <span>· Click to Focus Map →</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 6. DEEP CYBER THREAT INSPECTOR & INCIDENT RESPONSE DRAWER */}
+        {selectedAsset && (
+          <div className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 z-40 sm:w-[480px] bg-[#0b121e]/98 backdrop-blur-2xl border border-rose-500/40 rounded-2xl shadow-2xl p-5 flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
+            
+            {/* Remediation toast feedback */}
+            {remediationFeedback && (
+              <div className="p-2.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-mono rounded-lg flex items-center gap-2 animate-in fade-in">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>{remediationFeedback}</span>
+              </div>
+            )}
+
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-border/70 pb-3">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                    {selectedLayerType?.toUpperCase() || 'CTI TARGET'}
+                  </span>
+                  {selectedAsset.severity && (
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                      {selectedAsset.severity}
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-base font-bold text-white leading-tight">
+                  {selectedAsset.name || selectedAsset.targetName || selectedAsset.headline || selectedAsset.title || selectedAsset.cveId || selectedAsset.regionName}
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+                  {selectedAsset.city ? `${selectedAsset.city}, ${selectedAsset.country}` : selectedAsset.victimSector || selectedAsset.vendor || selectedAsset.alias || ''}
+                </p>
+              </div>
+
+              <button
+                onClick={() => setSelectedAsset(null)}
+                className="p-1.5 text-muted-foreground hover:text-white rounded-lg bg-secondary/50 hover:bg-secondary"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Details Grid */}
+            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+              {selectedAsset.c2Ip && (
+                <div className="bg-[#070b12] p-2 rounded-lg border border-border/60">
+                  <span className="text-muted-foreground text-[10px] block">C2 HOST IP</span>
+                  <span className="font-bold text-rose-400">{selectedAsset.c2Ip}</span>
+                </div>
+              )}
+              {selectedAsset.primaryC2Port && (
+                <div className="bg-[#070b12] p-2 rounded-lg border border-border/60">
+                  <span className="text-muted-foreground text-[10px] block">C2 BEACON PORT</span>
+                  <span className="font-bold text-foreground">{selectedAsset.primaryC2Port} / {selectedAsset.protocol}</span>
+                </div>
+              )}
+              {selectedAsset.peakBandwidthTbps && (
+                <div className="bg-[#070b12] p-2 rounded-lg border border-border/60">
+                  <span className="text-muted-foreground text-[10px] block">ATTACK PEAK</span>
+                  <span className="font-bold text-amber-400">{selectedAsset.peakBandwidthTbps} Tbps</span>
+                </div>
+              )}
+              {selectedAsset.cvssScore && (
+                <div className="bg-[#070b12] p-2 rounded-lg border border-border/60">
+                  <span className="text-muted-foreground text-[10px] block">CVSS RATING</span>
+                  <span className="font-bold text-rose-400">{selectedAsset.cvssScore} / 10.0</span>
+                </div>
+              )}
+              {selectedAsset.capacityTbps && (
+                <div className="bg-[#070b12] p-2 rounded-lg border border-border/60">
+                  <span className="text-muted-foreground text-[10px] block">CABLE CAPACITY</span>
+                  <span className="font-bold text-cyan-400">{selectedAsset.capacityTbps} Tbps</span>
+                </div>
+              )}
+              {selectedAsset.latencyMs && (
+                <div className="bg-[#070b12] p-2 rounded-lg border border-border/60">
+                  <span className="text-muted-foreground text-[10px] block">TRANSIT LATENCY</span>
+                  <span className="font-bold text-foreground">{selectedAsset.latencyMs} ms RTT</span>
+                </div>
+              )}
+              {selectedAsset.totalVictimsYtd && (
+                <div className="bg-[#070b12] p-2 rounded-lg border border-border/60">
+                  <span className="text-muted-foreground text-[10px] block">EXTORTION VICTIMS</span>
+                  <span className="font-bold text-rose-400">{selectedAsset.totalVictimsYtd} Orgs</span>
+                </div>
+              )}
+              {selectedAsset.asn && (
+                <div className="bg-[#070b12] p-2 rounded-lg border border-border/60 col-span-2">
+                  <span className="text-muted-foreground text-[10px] block">AUTONOMOUS SYSTEM</span>
+                  <span className="font-bold text-foreground truncate block">{selectedAsset.asn}</span>
+                </div>
+              )}
+            </div>
+
+            {/* MITRE ATT&CK TTPs if available */}
+            {(selectedAsset.mitreTechnique || selectedAsset.mitreAttAndCkGroup) && (
+              <div className="bg-[#070b12] p-3 rounded-xl border border-purple-500/30 flex flex-col gap-1.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-purple-300">
+                  <Crosshair className="h-4 w-4" />
+                  <span>MITRE ATT&CK Mapping</span>
+                </div>
+                {selectedAsset.mitreTechnique && (
+                  <div className="text-xs text-muted-foreground font-mono">
+                    <span className="text-purple-400 font-bold">Technique: </span>
+                    {selectedAsset.mitreTechnique}
+                  </div>
+                )}
+                {selectedAsset.mitreTactic && (
+                  <div className="text-xs text-muted-foreground font-mono">
+                    <span className="text-purple-400 font-bold">Tactic: </span>
+                    {selectedAsset.mitreTactic}
+                  </div>
+                )}
+                {selectedAsset.ttps && (
+                  <div className="mt-1 flex flex-col gap-1">
+                    {selectedAsset.ttps.map((ttp: string, i: number) => (
+                      <span key={i} className="text-[11px] font-mono bg-purple-950/40 border border-purple-500/20 px-2 py-0.5 rounded text-purple-200">
+                        • {ttp}
+                      </span>
+                    ))}
                   </div>
                 )}
               </div>
-            ) : (
-              /* Global Live Situation Feed */
-              <div className="space-y-3 font-mono">
-                <div className="p-2.5 rounded-lg bg-cyan-950/30 border border-cyan-500/30 text-[11px] text-cyan-300">
-                  <span className="font-bold block">WORLD MONITOR TELEMETRY</span>
-                  Live synchronization across 29 stock exchanges, 12 central banks, subsea fiber trunks, and global maritime corridors.
-                </div>
+            )}
 
-                <div className="space-y-2">
-                  {SITUATION_EVENTS.map(evt => (
-                    <div
-                      key={evt.id}
-                      className="p-2.5 rounded-lg bg-zinc-900/80 border border-zinc-800/80 hover:border-zinc-700 transition"
+            {/* Description or Incident Narrative */}
+            <div className="text-xs text-slate-300 leading-relaxed bg-[#070b12] p-3 rounded-xl border border-border/60">
+              <span className="text-[10px] font-mono text-muted-foreground block mb-1">INTEL DISPATCH</span>
+              {selectedAsset.description || selectedAsset.cause || selectedAsset.remediationGuidance || selectedAsset.securityNotice}
+            </div>
+
+            {/* AUTOMATED INCIDENT RESPONSE / CONTAINMENT ACTIONS */}
+            <div className="bg-[#070b12] p-3.5 rounded-xl border border-rose-500/40 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-rose-400">
+                  <Terminal className="h-4 w-4" />
+                  <span>Automated Incident Response</span>
+                </div>
+                <span className="text-[10px] font-mono text-muted-foreground">ONE-CLICK COUNTERMEASURE</span>
+              </div>
+
+              {selectedAsset.remediationCommand ? (
+                <div className="flex flex-col gap-2">
+                  <div className="p-2 bg-[#04060a] rounded font-mono text-[11px] text-emerald-400 border border-border/80 break-all select-all">
+                    {selectedAsset.remediationCommand}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => executeContainmentRule(selectedAsset.remediationCommand)}
+                      className="flex-1 py-1.5 px-3 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md"
                     >
-                      <div className="flex items-center justify-between text-[10px] text-zinc-500">
-                        <span className={cn(
-                          "font-bold",
-                          evt.level === 'WARNING' ? "text-amber-400" : "text-cyan-400"
-                        )}>
-                          [{evt.category}]
-                        </span>
-                        <span>{evt.timestamp}</span>
-                      </div>
-                      <p className="text-xs text-zinc-200 mt-1 leading-snug">
-                        {evt.title}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Key Macro Risk Summary */}
-                <div className="pt-2 border-t border-zinc-800 space-y-2">
-                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block">
-                    GLOBAL CHOKEPOINT STRESS INDEX
-                  </span>
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400">Bab-el-Mandeb & Red Sea:</span>
-                      <span className="text-rose-400 font-bold">88/100 (HIGH RISK)</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400">Strait of Hormuz:</span>
-                      <span className="text-amber-400 font-bold">72/100 (ELEVATED)</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400">Panama Neo-Panamax Locks:</span>
-                      <span className="text-emerald-400 font-bold">24/100 (NORMAL)</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400">Strait of Malacca:</span>
-                      <span className="text-emerald-400 font-bold">18/100 (NOMINAL)</span>
-                    </div>
+                      <Shield className="h-3.5 w-3.5" />
+                      <span>Deploy Firewall Drop Rule</span>
+                    </button>
+                    <button
+                      onClick={() => copyToClipboard(selectedAsset.remediationCommand, 'cmd')}
+                      className="py-1.5 px-3 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground text-xs font-mono transition-colors flex items-center gap-1"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      <span>{copiedText === 'cmd' ? 'Copied!' : 'Copy'}</span>
+                    </button>
                   </div>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const sampleRule = `iptables -A INPUT -s ${selectedAsset.c2Ip || '0.0.0.0/0'} -j DROP`;
+                      executeContainmentRule(sampleRule);
+                    }}
+                    className="flex-1 py-1.5 px-3 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md"
+                  >
+                    <Shield className="h-3.5 w-3.5" />
+                    <span>Apply Defense Rule</span>
+                  </button>
+                  <button
+                    onClick={() => copyToClipboard(JSON.stringify(selectedAsset, null, 2), 'stix')}
+                    className="py-1.5 px-3 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground text-xs font-mono transition-colors flex items-center gap-1"
+                  >
+                    <FileCode className="h-3.5 w-3.5" />
+                    <span>{copiedText === 'stix' ? 'Copied STIX!' : 'Export STIX'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
       </div>
     </div>
   );

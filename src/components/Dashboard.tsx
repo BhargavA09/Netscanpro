@@ -21,7 +21,8 @@ import {
   Zap, 
   CheckCircle2, 
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  Globe
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { fetchJson } from '../lib/api';
@@ -92,6 +93,24 @@ export function Dashboard({ onNavigate }: DashboardProps = {}) {
 
   const topMetricCards = [
     {
+      title: 'Global World Monitor',
+      value: '12 Layers Active',
+      subtext: 'Subsea Trunks, Pipelines & 29 Bourses',
+      icon: Globe,
+      color: 'text-cyan-400',
+      badge: 'Live Satellite HUD',
+      tab: 'worldmonitor'
+    },
+    {
+      title: 'Zero-Trust SOC Posture',
+      value: '94 / 100 Grade A+',
+      subtext: 'Suricata IDS & CVE Vulnerability Matrix',
+      icon: ShieldAlert,
+      color: 'text-emerald-400',
+      badge: 'Hardened',
+      tab: 'threats'
+    },
+    {
       title: 'Active Mesh AP Nodes',
       value: `${activeNodes} / ${activeNodes} Online`,
       subtext: 'B.A.T.M.A.N.-adv 100% Backhaul',
@@ -103,46 +122,35 @@ export function Dashboard({ onNavigate }: DashboardProps = {}) {
     {
       title: 'Connected Stations',
       value: `${totalDevices} Devices`,
-      subtext: 'Roaming Hand-off & CAKE SQM',
+      subtext: '802.11k/v/r Roaming & CAKE SQM',
       icon: Laptop,
       color: 'text-accent',
       badge: '0 Packet Drops',
       tab: 'neighborhood'
-    },
-    {
-      title: 'Real-Time LAN Throughput',
-      value: `${totalDownMbps > 0 ? totalDownMbps.toFixed(1) : '48.6'} Mbps`,
-      subtext: `Upload: ${totalUpMbps > 0 ? totalUpMbps.toFixed(1) : '8.4'} Mbps`,
-      icon: Activity,
-      color: 'text-emerald-400',
-      badge: 'Low Bufferbloat',
-      tab: 'network'
-    },
-    {
-      title: 'DPI Protocol Anomaly',
-      value: 'All Flows Verified',
-      subtext: 'DNS Sinkhole & Wire Dissector',
-      icon: Radio,
-      color: 'text-purple-400',
-      badge: 'Zero Covert Beacons',
-      tab: 'tracking'
     }
   ];
 
   const quickActionPortals = [
     {
-      id: 'wifimap',
-      title: 'Wi-Fi Mesh & Floorplan',
-      desc: 'Interactive 3-floor map, AP coverage radius, mesh backhaul links, and 24h station roaming.',
-      icon: Wifi,
-      color: 'border-sky-500/30 hover:border-sky-400 bg-sky-500/[0.03]'
+      id: 'worldmonitor',
+      title: 'Global World Monitor',
+      desc: 'Real-time macro & critical infrastructure telemetry (cables, pipelines, chokepoints, 29 stock exchanges, central banks).',
+      icon: Globe,
+      color: 'border-cyan-500/30 hover:border-cyan-400 bg-cyan-500/[0.03]'
     },
     {
-      id: 'network',
-      title: 'Device Discovery & Port Recon',
-      desc: 'Layer-2 ARPing + Layer-4 Nmap scan: active IP discovery, MAC vendors, and open ports.',
-      icon: Radar,
-      color: 'border-emerald-500/30 hover:border-emerald-400 bg-emerald-500/[0.03]'
+      id: 'threats',
+      title: 'SOC Threat Intel & IDS',
+      desc: 'Suricata signature alerts, CVE vulnerability matrix, MITRE ATT&CK mapping, and Zero-Trust firewall enforcement.',
+      icon: ShieldAlert,
+      color: 'border-rose-500/30 hover:border-rose-400 bg-rose-500/[0.03]'
+    },
+    {
+      id: 'wifimap',
+      title: 'Wi-Fi Mesh & Floorplan',
+      desc: 'Interactive 3-floor map, AP coverage radius, 802.11k/v/r roaming handoff, and Wireshark & Nmap Hybrid Suite.',
+      icon: Wifi,
+      color: 'border-sky-500/30 hover:border-sky-400 bg-sky-500/[0.03]'
     },
     {
       id: 'tracking',
@@ -153,17 +161,17 @@ export function Dashboard({ onNavigate }: DashboardProps = {}) {
     },
     {
       id: 'neighborhood',
-      title: 'Device & User Access Control',
+      title: 'Zero-Trust Access Control',
       desc: 'Household roles (Family, Smart Home IoT, Guests), device quarantine, VLANs, and speed limits.',
       icon: Users,
       color: 'border-amber-500/30 hover:border-amber-400 bg-amber-500/[0.03]'
     },
     {
       id: 'activity',
-      title: 'Universal System & Roam Logs',
+      title: 'System & Security Logs',
       desc: 'Full audit stream: DAWN BSS transitions, DHCP leases, Pi-hole blocks, and CAKE QoS DSCP tags.',
       icon: Activity,
-      color: 'border-cyan-500/30 hover:border-cyan-400 bg-cyan-500/[0.03]'
+      color: 'border-emerald-500/30 hover:border-emerald-400 bg-emerald-500/[0.03]'
     }
   ];
 
@@ -209,7 +217,7 @@ export function Dashboard({ onNavigate }: DashboardProps = {}) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
           {quickActionPortals.map((item, idx) => (
             <button
               key={`portal-${item.id}-${idx}`}

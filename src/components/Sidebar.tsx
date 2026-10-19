@@ -8,7 +8,8 @@ import {
   Activity,
   X,
   Server,
-  Globe
+  Globe,
+  ShieldAlert
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { fetchJson } from '../lib/api';
@@ -21,13 +22,13 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: 'worldmonitor', label: 'Global World Monitor', icon: Globe },
+  { id: 'worldmonitor', label: 'Global Cyber Threat Map', icon: Globe },
+  { id: 'threats', label: 'SOC Threat Intel & IDS', icon: ShieldAlert },
   { id: 'dashboard', label: 'Overview Dashboard', icon: LayoutDashboard },
   { id: 'wifimap', label: 'Wi-Fi Mesh & Floorplan', icon: Wifi },
-  { id: 'network', label: 'Device Discovery & Recon', icon: Radar },
   { id: 'tracking', label: 'Deep Packet Inspection (DPI)', icon: Radio },
-  { id: 'neighborhood', label: 'Device & User Access', icon: Users },
-  { id: 'activity', label: 'Network & System Logs', icon: Activity },
+  { id: 'neighborhood', label: 'Zero-Trust Access Control', icon: Users },
+  { id: 'activity', label: 'System & Security Logs', icon: Activity },
 ];
 
 export function Sidebar({ activeTab, setActiveTab, mobileOpen = false, onMobileClose }: SidebarProps) {
